@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "Axis": {
+      "enum": [
+        "object",
+        "scope",
+        "destination",
+        "condition",
+        "magnitude",
+        "negative-claim"
+      ],
+      "title": "Axis",
+      "type": "string"
+    },
+    "ConstraintAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "constraint": {
+          "title": "Constraint",
+          "type": "string"
+        },
+        "respected": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ],
+          "title": "Respected",
+          "type": "string"
+        }
+      },
+      "required": [
+        "constraint",
+        "respected"
+      ],
+      "title": "ConstraintAnswer",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "D2 judge output for one (intent, candidate cards) pair. Also the SFT target.",
+  "properties": {
+    "achieves_action": {
+      "enum": [
+        "yes",
+        "partly",
+        "no"
+      ],
+      "title": "Achieves Action",
+      "type": "string"
+    },
+    "constraints": {
+      "items": {
+        "$ref": "#/$defs/ConstraintAnswer"
+      },
+      "title": "Constraints",
+      "type": "array"
+    },
+    "axis_mismatch": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Axis"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "contradicts_negative": {
+      "default": false,
+      "title": "Contradicts Negative",
+      "type": "boolean"
+    },
+    "cited_cards": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Cited Cards",
+      "type": "array"
+    }
+  },
+  "required": [
+    "achieves_action"
+  ],
+  "title": "ChecklistAnswer",
+  "type": "object"
+}

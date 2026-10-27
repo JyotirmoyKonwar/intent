@@ -10,9 +10,10 @@ This document covers **what** we build and **why**. How, in what order and by wh
 
 | Constraint | Consequence for the design |
 |---|---|
-| **About 12 weeks** to submission | Dynamic analysis is optional. We fix the scope to Python, JS/TS, shell and instruction-only skills. |
-| **3–4 people plus LLM assistance** for annotation | About 400 hand-annotated skills (not 500+). The LLM pre-fills, people verify, and we check for anchoring bias. |
-| **Tight API budget; the main models are small and local (Qwen3, 4B–8B)** | The system leans on symbolic analysis, and the LLM gets only narrow, well-defined questions. It sees *evidence cards*, not raw repositories. Output is constrained to a JSON schema. We fine-tune a small judge on data we can generate. API models serve only as a silver-label source and as a frontier reference baseline. |
+| **17 days** to submission (2026-10-27 → **2026-11-13 AoE**; 5–10 pages IEEE + 2 pages of references, double-anonymous) | One thin pipeline that runs end to end. No dynamic analysis, no git-history drift mining, no multi-agent baseline. Deep analysis for Python and shell; JS/TS gets pattern-level detectors only; instruction-only skills are covered by C4. |
+| **One person now**, possibly 3–4 more later | **180–300 skills, LLM-pre-annotated and human-checked** (§5.7). Every task must be cuttable without breaking the paper. If a second person joins, they double-check a 40-skill subset for agreement. |
+| **Tight API budget; the main models are small and local (Qwen3, 4B–8B)** | The system leans on symbolic analysis, and the LLM gets only narrow, well-defined questions. It sees *evidence cards*, not raw repositories. Output is constrained to a JSON schema. API models are optional (a frontier reference, if the budget allows). |
+| **Hardware:** one RTX PRO 6000 (96 GB) for inference; Colab A100 (40 GB) for training only | All inference runs locally behind one OpenAI-compatible endpoint (vLLM). 96 GB also fits **Qwen3-32B**, which we use for pre-annotation and as a large local reference instead of the API. LoRA fine-tuning of the 8B judge (QLoRA on the A100) is a **stretch goal**. |
 
 We turn the third constraint into a selling point. An industry reviewer cares whether a skill audit can run **on-premise, cheaply, in CI, without sending proprietary skill code to a third-party API**. A good result from an 8B model is the strongest practical claim we can make.
 
@@ -40,7 +41,7 @@ These two sides can disagree. Sometimes the docs fall behind the code (benign dr
 
 ## 2. Contributions
 
-- **C1: SkillAlignBench.** A real-world benchmark from several platforms with every skill file kept. It is annotated with intents, behaviors, evidence locations, expected results and the three misalignment types. It has three splits: natural, mined-drift and injected.
+- **C1: SkillAlignBench.** A real-world benchmark from several platforms with every skill file kept. It is annotated with intents, behaviors, evidence locations, expected results and the three misalignment types. It has three splits: natural-random, natural-enriched and injected (a mined-drift split is future work).
 - **C2: Multi-source extraction.** *Intent units* come from every declarative source, and *behavior units* come from every executable source. Behaviors include the instructions that `SKILL.md` gives to the agent and composite behaviors that span files.
 - **C3: Misalignment detection by fulfillment, built for small models.** Symbolic analysis produces *evidence cards*. A *decomposed checklist judge* answers narrow yes/no questions about them, and deterministic rules turn those answers into UI, UB or SD findings with call chains and risk.
 - **C4: Empirical study.** We compare the four method families the challenge names, run ablations, test a small fine-tuned judge against frontier zero-shot models, and measure prevalence in the wild.
@@ -57,8 +58,8 @@ These two sides can disagree. Sometimes the docs fall behind the code (benign dr
   - composite behaviors
   - evidence cards versus raw code
   - the decomposed judge versus one holistic judgment
-- **RQ4 (Small models):** How close can a 4B–8B local model get to a frontier API model when given the same evidence? How much does fine-tuning on injected and silver data help?
-- **RQ5 (Explanations and cost):** Are the reported evidence, call chains and risk explanations accurate and useful? What does each skill cost in time and GPU?
+- **RQ4 (Small models):** How close do 4B and 8B local models get to a 32B local model (and, if the budget allows, a frontier API model) when given the same evidence? *(Stretch: does LoRA fine-tuning on injected data help?)*
+- **RQ5 (Explanations and cost):** Is the reported evidence (spans, call chains) accurate? What does each skill cost in time and GPU? *(Evidence accuracy is measured automatically against gold spans; usefulness is an author assessment of 30 findings, not a user study.)*
 
 ---
 
@@ -158,14 +159,16 @@ crawl ──► snapshot (all files, SHA, license, URL)
 
 | Split | How we build it | What it is for | Target |
 |---|---|---|---|
-| **Natural-random** | A uniform random sample from the deduplicated corpus | **Unbiased prevalence (RQ1)** and a realistic test of precision | 150 skills |
-| **Natural-enriched** | Sampled from skills flagged by *any* baseline or by small-LLM triage (high recall) | Enough real positives for per-type metrics | 150 skills |
-| **Drift** | Git-history mining (below), then human confirmation | Realistic UI and SD from benign drift | 100 skills |
-| **Injected** | Mutation operators applied to aligned skills (below) | Controlled ground truth for composites and evasion; **training data for the small judge** | 300 test + as many training skills as needed |
+| **Natural-random** | A uniform random sample from the deduplicated corpus | **Unbiased prevalence (RQ1)** and a realistic test of precision | 100 skills (floor 80) |
+| **Natural-enriched** | Sampled from skills flagged by *any* baseline or by small-LLM triage (high recall) | Enough real positives for per-type metrics | 100 skills (floor 60) |
+| **Drift** | *Cut from v1.* Git-history mining (below) is future work; it is kept here only in case a helper joins early | Realistic UI and SD from benign drift | 0 (stretch: 40) |
+| **Injected** | Mutation operators applied to aligned skills (below) | Controlled ground truth for composites and evasion; training data if we fine-tune | 150 test (generated; ground truth comes from the operator, humans spot-check 30) |
 
-**About 400 hand-annotated real skills in total**, plus the injected set. The enriched split over-represents positives, so **prevalence numbers come only from the random split.** Detection metrics are reported for each split separately.
+**180–300 LLM-pre-annotated, human-checked real skills in total** (target 200 natural + extra enriched skills if the pace allows), plus the injected set. The enriched split over-represents positives, so **prevalence numbers come only from the random split.** Detection metrics are reported for each split separately.
 
-**Mining drift.** For each GitHub skill that has history:
+For v1 we implement only six operators: `DROP_IMPL`, `DROP_VARIANT`, `ADD_SINK_SPLIT`, `ADD_INSTRUCTION`, `RETARGET`, `NEGATE_CLAIM`, plus the `VAGUE_DOC` control. The other operators below are stretch goals.
+
+**Mining drift (future work).** For each GitHub skill that has history:
 1. Find commits where executable files change while `SKILL.md` and the README stay the same.
 2. Pick pairs (docs at commit *N*, code at commit *N+k*) where the code diff adds or removes a capability according to our detectors. This is cheap and symbolic.
 3. Have the small LLM screen the pair: "Does this code change alter what the docs promise?"
@@ -256,17 +259,17 @@ Dormant (unreachable) behaviours → annotate, flag `dormant`, do not count as U
 - **Inline code blocks in SKILL.md** that the agent is told to run are executable content.
 - **Granularity:** one behavior per (capability, target, call site). A composite is a separate unit that points to its parts. If a finding involves a composite, it refers to the composite.
 
-### 5.7 Annotation process with 3–4 people and an LLM
+### 5.7 Annotation process: LLM pre-annotation, human check
 
-1. **Pre-fill.** The local model plus the SkillAlign extractors propose intents, behaviors and links. *The model does not propose findings*, which reduces anchoring on verdicts.
-2. **Pilot, week 3.** Everyone labels the same 30 skills. We compute κ, discuss every disagreement, and revise the guideline and implied table.
-3. **Main round.** Every skill in a **test** split is labeled independently by two people, and a third person adjudicates. Dev-split skills get one person plus a check by the local LLM: the LLM's disagreements go to a second person.
-4. **Anchoring check.** 40 skills are annotated *without* pre-fill by one annotator and *with* pre-fill by another. We report the difference, which answers the reviewer question "did the LLM bias your labels?"
-5. **Throughput budget.** At about 20 minutes per skill with pre-fill, roughly 280 test skills × 2 + 120 dev skills × 1 ≈ 680 annotations ≈ **230 person-hours**, or about 8 h per person per week over 7 weeks for 4 people. If the pace slips, we shrink the enriched split first.
-6. **Agreement reporting.** κ at the skill level, κ per type at the finding level, and span overlap for evidence.
+1. **Pre-annotation by a different system than the one we evaluate.** **Qwen3-32B** (local, 96 GB GPU) reads the *whole skill with line numbers* (not our evidence cards) and proposes a full annotation, findings included, in the §5.5 schema. Because the annotator model, its input and its prompt differ from SkillAlign's (8B, cards, checklist), SkillAlign cannot score well just by copying the annotator. Every span is checked automatically against the files before a person sees it.
+2. **Pilot, days 4–5.** The author checks 20 skills, revises the guideline and the implied table, and fixes the pre-annotation prompt. Pilot skills go to dev.
+3. **Human check.** A person reviews every pre-annotated skill in a rendered Markdown view and edits the JSON: accept, fix or delete each intent, behavior and finding, and add anything missing. We log minutes per skill and the edit counts (how much the LLM got wrong is itself a result).
+4. **Anchoring check.** 20 test skills are annotated *from scratch without pre-fill* before the author sees the LLM version; we report agreement between the two. If a second person joins, they independently check 40 test skills and we report κ.
+5. **Throughput budget.** At about 10 minutes per pre-annotated skill, 250 skills ≈ **42 person-hours**, i.e. about 5 h per day over days 4–12 for one person. If the pace slips, shrink the enriched split first, then stop at the 180 floor.
+6. **Agreement reporting.** Skill-level κ and per-type finding-level κ on the double-checked subset, plus span overlap. With one annotator, we report intra-rater agreement on the anchoring subset and say so as a threat to validity.
 
 ### 5.8 Splits and freezing
-We split dev and test by **repository**, about 30/70, so that near-duplicate skills from one author do not leak across. The **test set is frozen by week 8**, and all tuning happens on dev, the fixtures and the training part of the injected split.
+We split dev and test by **repository**, about 30/70, so that near-duplicate skills from one author do not leak across. The **test set is frozen on day 13 (Sun 2026-11-08)**, and all tuning happens on dev, the fixtures and the training part of the injected split.
 
 ### 5.9 Ethics
 We neutralize live payloads in the released copies and restrict access to raw malicious samples. We disclose confirmed malicious skills to the platforms before publishing, and we follow each repo's license.
@@ -281,7 +284,7 @@ We neutralize live payloads in the released copies and restrict access to raw ma
 3. **Narrow questions.** Every LLM call asks one well-defined question with a JSON-schema output, enforced by constrained decoding in vLLM.
 4. **Decompose, then combine with rules.** The judge answers a checklist of yes/no questions, and deterministic rules derive the type. This is easier for a small model, and every decision can be traced.
 5. **Agreement over a single answer.** Local inference is cheap, so we sample several times (n=5) and take a majority vote.
-6. **Train what we can generate.** The injected split and the silver labels from the API give supervision for a LoRA-tuned judge.
+6. **Train what we can generate (stretch).** The injected-train split can supervise a LoRA-tuned judge. v1 ships with a zero-shot judge.
 
 ### 6.2 Pipeline
 
@@ -367,11 +370,12 @@ We neutralize live payloads in the released copies and restrict access to raw ma
 |---|---|---|
 | B1, B3, C4 extraction | Qwen3-8B, non-thinking mode, JSON-constrained | 4B is the cheaper option, tested in RQ4 |
 | Category classifier, triage | Qwen3-4B | |
-| D2 judge | **Qwen3-8B with a LoRA fine-tune** (SkillAlign-Judge); a zero-shot thinking-mode variant for comparison | The main model |
+| D2 judge | **Qwen3-8B zero-shot**, non-thinking and thinking variants | The main model. *Stretch:* LoRA fine-tune (SkillAlign-Judge) via QLoRA on a Colab A100 |
 | Embeddings | Qwen3-Embedding-0.6B | Recall only |
-| Silver labels and frontier reference | One API model, used sparingly (see the budget in IMPLEMENTATION.md) | Never part of the deployed pipeline |
+| Pre-annotation and large local reference | **Qwen3-32B** on the 96 GB GPU | Never part of the deployed pipeline |
+| Frontier reference | One API model on the test set, *only if the budget allows* | Optional |
 
-**Training data for the judge:** checklist answers known from the injected-train skills, plus API silver labels on about 1–2k (intent, cards) pairs from **corpus skills that are not in the benchmark**. Neither source overlaps the test set.
+**Training data for the judge (stretch):** checklist answers known from injected-train skills (different operator templates from the test set), plus 32B-generated silver labels on corpus skills **not in the benchmark**. Neither source overlaps the test set.
 
 ---
 
@@ -384,7 +388,9 @@ To keep the comparison fair, **every LLM-based baseline uses the same local back
 | Rule-based | **R1** Cisco skill-scanner (rule engine only) · **R2** our capability rules + keyword matching against the docs ("capability with no doc keyword" becomes UB; "doc verb with no capability" becomes UI) | Findings → UB/SD; R2 also gives UI |
 | Static analysis | **S1** Semgrep and Bandit taint findings with no matching doc mention → UB | UB only |
 | Semantic similarity | **M1** embed intents and behavior summaries, cosine threshold tuned on dev (DocChecker-style): unmatched intent → UI, unmatched behavior → UB, matched but low score → SD | All three types |
-| LLM-based | **L1** zero-shot: the whole skill (truncated to context) in one prompt, findings in our schema · **L2** a SkillProbe-style multi-agent auditor re-implemented with the local model · **L3** L1 with the frontier API model (reference) · *(optional)* MalSkills if its code is released | All three types |
+| LLM-based | **L1** zero-shot: the whole skill (truncated to context) in one prompt, findings in our schema, Qwen3-8B · **L1-32B** the same with Qwen3-32B (large local reference; note it is also the pre-annotator, so its scores are an upper-bound-ish reference, not a fair competitor) · *(optional)* **L3** L1 with a frontier API model · *(cut)* L2 multi-agent | All three types |
+
+**v1 baselines that must ship:** R2, M1, L1 (8B), L1-32B. R1 (Cisco skill-scanner) and S1 (Semgrep/Bandit) are added only if they install and run cleanly in under half a day each.
 
 Baselines that only give a yes/no answer are compared at the skill level and are not penalized at the finding level for types they cannot produce. We report that limitation.
 
@@ -402,8 +408,8 @@ Baselines that only give a yes/no answer are compared at the skill level and are
 - Finding-level precision, recall and F1 **per type** with macro averages, **reported per split**.
 - False-positive rate on the `VAGUE_DOC` / `REFACTOR` controls and on aligned official skills.
 - Evidence localization: line-level IoU, and accuracy of the call chain on composites.
-- Explanations (RQ5): 50 sampled findings, 3 raters, 5-point Likert scores for correctness and usefulness.
-- Cost: wall-clock time and GPU-seconds per skill, and API dollars (for L3 only).
+- Explanations (RQ5): evidence-span IoU and call-chain accuracy (automatic), plus an author assessment of 30 sampled findings.
+- Cost: wall-clock time and GPU-seconds per skill, and API dollars (for L3 only, if run).
 - Statistics: 95% bootstrap confidence intervals, and McNemar's test for skill-level comparisons between systems.
 
 ### 8.3 Ablations (RQ3) and the model study (RQ4)
@@ -417,10 +423,12 @@ Baselines that only give a yes/no answer are compared at the skill level and are
 | `--judge similarity` | Fulfillment judgment versus a similarity score (Challenge 2) |
 | `--votes 1` | Voting versus a single sample |
 | `--no-implied-table` | Is the category prior needed to keep UB precision up? |
-| RQ4 grid | Qwen3-4B vs 8B × zero-shot vs thinking vs LoRA × frontier reference |
+| RQ4 grid | Qwen3-4B vs 8B vs 32B × non-thinking vs thinking (LoRA and frontier API only if time and budget allow) |
+
+**v1 ablations that must ship:** `--no-instructions`, `--no-composite`, `--cards raw`, `--judge holistic`, `--no-implied-table`. The rest are stretch.
 
 ### 8.4 In the wild (RQ1)
-We run the full pipeline on the deduplicated corpus, using local models only, so the cost is GPU time. People verify a random sample of 100 findings to estimate precision on the corpus, and we report prevalence from the **natural-random** split with confidence intervals. We break the results down by platform, language, category, and drift versus deliberate.
+We run the full pipeline on the deduplicated corpus, using local models only, so the cost is GPU time. The author verifies a random sample of 50 findings to estimate precision on the corpus, and we report prevalence from the **natural-random** split with confidence intervals. We break the results down by platform, language, category, and drift versus deliberate.
 
 ---
 
@@ -433,7 +441,7 @@ We run the full pipeline on the deduplicated corpus, using local models only, so
 - **H1:** Misalignment is common, and most of it is benign drift rather than deliberate disguise. This shows the problem is broader than malware.
 - **H2:** Similarity-based and rule-based methods do much worse on SD and UI than on UB, which supports Challenge 2.
 - **H3:** Composite and agent-instruction behaviors make up a large share of the high-risk UB findings, and they are missed without cross-unit analysis (Challenge 3).
-- **H4:** A small fine-tuned judge on evidence cards comes close to a frontier model given raw code, at a fraction of the cost.
+- **H4:** A small (8B) judge on evidence cards comes close to a much larger model (32B) given raw code, at a fraction of the cost.
 
 If H4 fails, the paper still holds. The benchmark, the taxonomy and the prevalence study (C1, RQ1–RQ3) are a full contribution, and "small models are not enough yet, and here is where they fail" is still a useful industry result.
 
@@ -456,13 +464,14 @@ If H4 fails, the paper still holds. The benchmark, the taxonomy and the prevalen
 6. Case studies: one per type plus one composite exfiltration.
 7. Lessons for industry, threats to validity, related work, conclusion.
 
-**Check the ICSE industry challenge CFP** for the page limit and artifact requirements before planning section lengths.
+**Format:** 5–10 pages IEEE conference format plus up to 2 pages of references, double-anonymous, submitted on HotCRP. Aim for about 9 pages; the artifact goes to an anonymous repository.
 
 ---
 
 ## 10. Scope decisions
-- **Deep analysis for Python, JS/TS and shell.** Other languages go to a raw-code LLM fallback and are flagged in the results.
-- **Dynamic analysis (C6) is optional** and is the first thing to cut.
+- **Deep analysis for Python and shell; pattern-level detectors for JS/TS.** Other languages go to a raw-code LLM fallback and are flagged in the results.
+- **Cut from v1:** dynamic analysis (C6), git-history drift mining, the multi-agent baseline (L2), a user study for explanations. They are listed as future work.
+- **Stretch in v1:** LoRA judge, frontier API reference, R1/S1 baselines, the remaining injection operators.
 - **No live agent run in v1.** Agent behavior is approximated by C4 (the instructions in SKILL.md).
 
 ## 11. Risks and mitigations
@@ -471,8 +480,10 @@ If H4 fails, the paper still holds. The benchmark, the taxonomy and the prevalen
 | Too few natural positives | Enriched sampling, the drift split and the injected split |
 | Disagreement about what counts as "implied" | The category implied table, the pilot round, κ reporting |
 | The small model hallucinates intents or evidence | Verbatim quote checks, required card IDs, constrained decoding, voting |
-| The small model fails the judge task | Decomposed checklist, LoRA fine-tuning, a thinking-mode variant; H4 is optional for the paper |
+| The small model fails the judge task | Decomposed checklist, a thinking-mode variant, voting; LoRA fine-tuning as a stretch; H4 is optional for the paper |
 | Overfitting to the injected data | Separate operator templates for training and test; main results reported on the natural splits |
 | Annotation runs behind schedule | Shrink the enriched split first; keep the random and drift splits whole |
 | Obfuscated or dynamic code | Treat obfuscation as a behavior; optional dynamic confirmation; report the misses |
-| API budget | API used only for silver labels (one batch) and the L3 reference on the test set; responses cached |
+| API budget | Local 32B replaces the API for pre-annotation and silver labels; API used at most for an optional L3 reference; responses cached |
+| One person, 17 days | Daily cut-list in IMPLEMENTATION.md §6; the pipeline is built as a thin slice first and widened only after it runs end to end |
+| The 32B pre-annotator biases the gold labels | Different model, input and prompt from SkillAlign; full human check; 20-skill from-scratch anchoring check; edit counts reported |

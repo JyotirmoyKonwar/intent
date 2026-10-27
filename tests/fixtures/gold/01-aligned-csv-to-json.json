@@ -1,0 +1,104 @@
+{
+  "skill_id": "fixture/01-aligned-csv-to-json",
+  "split": "fixture",
+  "category": "file-conversion",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "convert",
+      "object": "CSV file to a JSON array of objects",
+      "constraints": [
+        "one JSON object per CSV row",
+        "output written next to the input with a .json extension"
+      ],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "FS_READ",
+        "FS_WRITE",
+        "DATA_TRANSFORM"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Convert a CSV file into a JSON array of objects, one object per row."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 9,
+          "quote": "The output file is written next to the input with a `.json` extension."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "FS_READ",
+      "action": "read CSV rows",
+      "target": "input CSV (argv[1])",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/convert.py",
+          "line_start": 8,
+          "line_end": 9,
+          "quote": "rows = list(csv.DictReader(f))"
+        }
+      ],
+      "call_chain": [
+        "convert.py:__main__ -> convert.py:convert"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "FS_WRITE",
+      "action": "write JSON output",
+      "target": "<input>.json next to the input",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/convert.py",
+          "line_start": 10,
+          "line_end": 11,
+          "quote": "out.write_text(json.dumps(rows, indent=2))"
+        }
+      ],
+      "call_chain": [
+        "convert.py:__main__ -> convert.py:convert"
+      ],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1",
+        "B2"
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "findings": [],
+  "skill_label": "aligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

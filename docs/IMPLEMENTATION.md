@@ -1,8 +1,8 @@
 # SkillAlign: Implementation Plan
 
-This document covers how we build what [PLAN.md](PLAN.md) describes: the stack, repository layout, data contracts, milestones, budgets and timeline. Section numbers such as §6.3 point to PLAN.md.
+This document covers how we build what [PLAN.md](PLAN.md) describes: the stack, repository layout, data contracts, milestones and the day-by-day schedule. Section numbers such as §6.3 point to PLAN.md.
 
-**Assumptions:** about 12 weeks (deadline around 2027-01-11, to be confirmed), 3–4 people, a tight API budget, and small local models (Qwen3 4B–8B) as the main engine.
+**Assumptions (re-scoped 2026-10-27):** 17 days to the deadline (**2026-11-13 AoE**), one person (possibly 3–4 more later), a tight API budget, an RTX PRO 6000 (96 GB) for inference, a Colab A100 (40 GB) for training only, and small local models (Qwen3 4B–8B) as the main engine.
 
 ---
 
@@ -12,36 +12,27 @@ This document covers how we build what [PLAN.md](PLAN.md) describes: the stack, 
 |---|---|---|
 | Language and environment | Python ≥3.13, `uv` | Already set up in this repo |
 | Data models | `pydantic` v2 | One schema for extractor output, annotations and reports |
-| CLI | `typer` | `skillalign crawl / normalize / extract / detect / eval / train` |
-| Parsing | `tree-sitter` + `tree-sitter-language-pack`, `python-frontmatter`, `markdown-it-py`, `bashlex` | Works across languages, gives exact line numbers |
-| Call graph and data flow | Our own tree-sitter resolver; `semgrep` taint mode as an adapter; `bandit` | No single tool covers every language a skill can contain |
-| Rules | Rules from Cisco skill-scanner (YARA/YAML), Semgrep registry packs | Reuse existing rules instead of writing them from scratch |
+| CLI | `typer` | `skillalign schema / validate / llm-smoke`, later `collect / extract / detect / eval` |
+| Parsing | `tree-sitter` + `tree-sitter-language-pack`, `python-frontmatter`, `markdown-it-py`, `bashlex` | Exact line numbers; Python's own `ast` is fine for Python files |
+| Call graph and data flow | Our own light resolver (imports + calls + def-use within a function) | Enough for the composite patterns in §6.3; Semgrep only if it fits the schedule |
 | Graphs | `networkx` | Behavior graph, path enumeration |
-| **Local LLM serving** | **`vllm`** (OpenAI-compatible server) with **guided JSON decoding** (xgrammar); fallback `llama.cpp`/`ollama` for laptops | Constrained output is necessary for 4–8B models |
-| Models | Qwen3-8B, Qwen3-4B, Qwen3-Embedding-0.6B | §6.4 |
-| Fine-tuning | `peft` LoRA + `trl` SFT (or `unsloth` to save memory) | Trains SkillAlign-Judge on one GPU |
-| API (sparing use) | One OpenAI-compatible or Anthropic client behind the same interface | For silver labels and the L3 reference only |
-| Caching | `diskcache`, keyed by hash(prompt, model, params, seed) | Reruns are reproducible and cost nothing |
-| Sandbox (optional) | Docker, `mitmproxy`, `strace`, `inotifywait` | C6 |
-| Annotation UI | `streamlit` | Linking intents to behaviors needs a custom UI |
+| **LLM access** | `openai` client against **any OpenAI-compatible server**; `response_format=json_schema` for constrained output | The same code talks to vLLM on the GPU box and to ollama on a laptop |
+| **Serving (GPU box, not a project dependency)** | `vllm` serving Qwen3-8B, Qwen3-4B and Qwen3-32B | 96 GB fits 32B in bf16 (~64 GB) or 8B + 32B-AWQ side by side |
+| Embeddings | Qwen3-Embedding-0.6B via the same server (`/v1/embeddings`) | Recall only |
+| Caching | stdlib `sqlite3`, keyed by hash(model, messages, schema, params, seed, sample index) | Reruns are reproducible and free; the cache is part of the artifact |
+| Fine-tuning (stretch) | `peft` QLoRA + `trl` SFT on Colab A100 | Only if days 10–12 have slack |
+| Annotation review | Rendered Markdown view + hand-edited JSON, validated by `skillalign validate` | No time for a UI; the validator catches broken spans and references |
 | Experiments | `pandas`, `scikit-learn`, `scipy` (bootstrap, McNemar), `matplotlib` | |
-| Quality | `pytest`, `ruff`, `pyright`, GitHub Actions | |
+| Quality | `pytest`, `ruff` | CI is optional for one person |
 
 ### Compute
-- **Inference:** Qwen3-8B in bf16 needs about 16 GB of VRAM, so one 24 GB GPU is enough. An AWQ/GPTQ 4-bit build runs on 12 GB. Qwen3-4B runs on 8–12 GB.
-- **LoRA fine-tuning of 8B:** one 24 GB GPU in 4-bit QLoRA, or a 40–80 GB GPU in bf16. Expect a few hours for each run of 2–5k examples.
-- **Corpus run (RQ1):** on the order of 10–20k skills with batched vLLM. **Measure throughput on 50 skills in week 6** before committing to running on the full corpus. Most of the work is symbolic, and the LLM only sees cards.
+- **Inference (RTX PRO 6000, 96 GB):** run one vLLM server per model or one at a time. Qwen3-8B bf16 ≈ 16 GB, Qwen3-32B bf16 ≈ 64 GB; with `--gpu-memory-utilization` split, 8B and 32B-AWQ fit together. Use prefix caching, because the judge prompts share long prefixes.
+- **Laptop (MX330, 2 GB):** too small for real runs. Use it for code and tests only; the tests use a fake LLM transport. Point `SKILLALIGN_LLM_BASE_URL` at the GPU box (SSH tunnel) for real calls.
+- **Colab A100 (40 GB):** QLoRA of the 8B judge if we get to it. Not used for inference.
+- **Throughput check on day 6:** time the full pipeline on 50 skills before planning the corpus run.
 
-> **Action item:** list the GPUs the team actually has (model, VRAM, and whether they are shared) before week 1 ends. This decides between bf16 and quantized models and whether QLoRA is needed.
-
-### API budget plan
-| Use | Size | When |
-|---|---|---|
-| Prompt and schema prototyping (before switching to local) | Small, a few dozen skills | Weeks 2–4 |
-| **Silver labels** for judge training | About 1–2k (intent, cards) checklist items from *non-benchmark* corpus skills; cards are short, so tokens per item are small | One batch in week 7 |
-| **L3 frontier reference** baseline | Test set only, about 280 real skills plus a subset of the injected test set | One run in week 9 |
-
-**Pilot first:** run 20 items, measure the tokens, and extrapolate before each batch. Cache every response, because we cannot afford to rerun. If the budget is very tight, drop L3 on the injected set first, then reduce the silver labels to about 500 items and rely more on injected training data.
+### API budget
+Optional. The local 32B replaces the API for pre-annotation and silver labels. If money is available, spend it on one L3 frontier reference run on the test set (day 12–13). Pilot 20 items first and extrapolate; cache every response.
 
 ---
 
@@ -52,207 +43,162 @@ intent/
 ├── pyproject.toml
 ├── docs/                      # challenge PDF, PLAN.md, IMPLEMENTATION.md, guideline.md, schema/
 ├── src/skillalign/
-│   ├── models.py              # pydantic: Skill, FileArtifact, Span, Intent, Behavior, Card, Finding, Report
-│   ├── config.py              # paths, model endpoints, thresholds, seeds
+│   ├── models.py              # pydantic data contracts (M0, done)
+│   ├── config.py              # env-based settings (M0, done)
+│   ├── spans.py               # check spans/quotes against files on disk (M0, done)
 │   ├── llm/
-│   │   ├── client.py          # call(prompt, schema, n) → validated objects; vLLM guided-JSON / API
-│   │   ├── cache.py
-│   │   └── prompts/           # versioned *.j2 templates (extract_claims, merge_intents,
-│   │                          #   instructions, checklist_judge, implied_check, holistic_baseline)
-│   ├── collect/               # official.py github.py clawhub.py skillssh.py dedup.py history.py
+│   │   ├── client.py          # structured(messages, schema, n) → validated objects; voting (M0, done)
+│   │   ├── cache.py           # sqlite response cache (M0, done)
+│   │   └── prompts/           # versioned *.j2 templates
+│   ├── collect/               # official.py github.py clawhub.py dedup.py
 │   ├── normalize/             # loader.py markdown.py languages.py
-│   ├── intents/               # extract.py canonicalize.py (action vocab) consolidate.py conflicts.py
-│   ├── behaviors/
-│   │   ├── taxonomy.py        # capability enum + API→capability maps
-│   │   ├── detectors/         # python.py js.py shell.py config.py hidden_content.py
-│   │   ├── callgraph.py  reachability.py  dataflow.py
-│   │   ├── composite.py       # pattern library
-│   │   ├── instructions.py    # C4
-│   │   └── dynamic/           # optional C6
-│   ├── cards.py               # Behavior → evidence card text (templates)
+│   ├── intents/               # extract.py canonicalize.py consolidate.py
+│   ├── behaviors/             # taxonomy.py detectors/ callgraph.py dataflow.py composite.py instructions.py
+│   ├── cards.py
 │   ├── align/                 # candidates.py judge.py implied.py decide.py risk.py
-│   ├── report/                # json + markdown/html
-│   ├── train/                 # build_dataset.py (injected + silver → SFT jsonl), sft.py, eval_judge.py
-│   ├── baselines/             # cisco.py rules.py static.py similarity.py llm_zeroshot.py multiagent.py
-│   ├── bench/                 # schema.py sample.py triage.py inject.py (operators) annotate_app.py agreement.py
-│   ├── eval/                  # match.py metrics.py stats.py run.py tables.py figures.py
+│   ├── report/
+│   ├── baselines/             # rules.py similarity.py llm_zeroshot.py (+ cisco.py static.py if time)
+│   ├── bench/                 # sample.py preannotate.py render.py inject.py agreement.py
+│   ├── eval/                  # match.py metrics.py stats.py run.py tables.py
 │   └── cli.py
-├── data/                      # gitignored: raw/ corpus/ bench/ runs/ train/ cache/
-├── tests/fixtures/skills/     # 20–30 tiny hand-written skills with gold labels
+├── data/                      # gitignored: raw/ corpus/ bench/ runs/ cache/
+├── tests/fixtures/skills/     # hand-written skills with gold.json (M0, done)
 └── scripts/
 ```
 
 ---
 
-## 3. Data contracts (frozen in week 1)
+## 3. Data contracts (frozen on day 1)
 
-Every stage reads and writes JSON that is validated by `models.py`, so people can work on stages in parallel against fixtures.
+Every stage reads and writes JSON validated by `src/skillalign/models.py`. Run `skillalign schema` to export the JSON Schema to `docs/schema/`.
 
-- **`Span`**: `file, line_start, line_end`. All evidence anywhere in the system is a `Span`. **Objects without valid spans are rejected.**
-- **`Skill`, `FileArtifact`** (role, language, sha256; virtual files keep a parent path and line offset).
+- **`Span`**: `file, line_start, line_end` (1-based, inclusive, relative to the skill root). **`Evidence`** = `Span` + `quote` (the exact text at those lines, or a substring of it). `spans.py` checks both against the files; objects with broken evidence are rejected.
+- **`FileArtifact`, `Skill`**: file role, language, sha256; virtual files (fenced code inside Markdown) keep a parent path and a line offset.
 - **`Intent`, `Behavior`**: PLAN.md §4.2 and §4.3.
-- **`Card`**: `behavior_id, text, snippet, span, chain`. This is the only view of code the LLM gets.
-- **`ChecklistAnswer`**: `achieves_action, constraints[], axis_mismatch, contradicts_negative, cited_cards[]`. This is the judge's output schema, the SFT target, and what annotators fill in.
-- **`Finding`, `Report`**: PLAN.md §5.5. Gold annotations and predictions use the **same schema**.
-
-Export the JSON Schema to `docs/schema/`. That file doubles as the vLLM guided-decoding grammar.
+- **`Card`**: `behavior_id, text, snippet, span, chain`. The only view of code the judge sees.
+- **`ChecklistAnswer`**: `achieves_action, constraints[], axis_mismatch, contradicts_negative, cited_cards[]`. The judge's output schema and the fine-tuning target.
+- **`Finding`, `Annotation`**: PLAN.md §5.5. Gold labels and system predictions use the **same `Annotation` model**; `provenance` records which system, model and prompt produced it. Model validators check that every reference (intent IDs, behavior IDs, `composite_of`, alignment links) resolves, that each finding type has the fields it needs, and that `skill_label` matches the findings.
 
 ---
 
 ## 4. Milestones and tasks
 
-### M0: Foundations (week 1)
-- [ ] Add dependencies; set up ruff, pyright, pytest and CI.
-- [ ] Write `models.py`, `config.py` and the JSON Schema export.
-- [ ] Write the LLM client: a vLLM endpoint with guided JSON, `n` samples with majority vote, retries on validation failure, disk cache, token and GPU-time logging. The API backend sits behind the same interface.
-- [ ] Bring up vLLM with Qwen3-8B and Qwen3-4B on the team GPU, and smoke-test guided JSON.
-- [ ] Hand-write 20–30 **fixture skills** with gold labels: one per type, per language, per composite pattern; a contradicted negative claim; an instruction-only skill; hidden HTML-comment instructions; aligned controls.
-- [ ] Write the CLI skeleton.
+Each milestone has a **must** part (needed for the paper) and a **stretch** part.
 
-**Exit criterion:** CI is green, the fixtures validate, and a guided-JSON call to the local 8B model works.
+### M0: Foundations (day 1) — done
+- [x] Dependencies, package layout, `ruff`, `pytest`.
+- [x] `models.py`, `config.py`, `spans.py`, JSON Schema export.
+- [x] LLM client: OpenAI-compatible endpoint, JSON-schema constrained output, parse fallback (strips `<think>` and code fences), retries on validation failure, `n` samples with majority vote, sqlite cache, token and latency logging.
+- [x] Fixture skills with gold labels covering every type and the main edge cases.
+- [x] CLI: `schema`, `validate`, `llm-smoke`.
+- [ ] **On the GPU box:** start vLLM with Qwen3-8B and run `skillalign llm-smoke`.
 
-### M1: Collection and corpus (weeks 1–3)
-- [ ] `collect/official.py`, `github.py` (code search, rate limits, keep clones for history), `clawhub.py`, `skillssh.py`. Check each site's ToS and robots.txt first.
-- [ ] Import released samples from MalSkillBench and MaliciousSkillBench if their licenses allow.
-- [ ] Filter, dedup (MinHash), profile, and write a manifest for each skill.
-- [ ] `collect/history.py`: find drift candidates where code changed and docs did not, filtered by a capability diff from M3's detectors. A first version can use regexes until M3 lands.
+### M1: Collection (days 2–3)
+- [x] Official repos (`skillalign collect official`): anthropics/skills, openai/skills, vercel-labs/agent-skills, huggingface/skills → 98 skills, 97 after dedup (2026-10-27).
+- [x] GitHub code-search collector (`skillalign collect github`), size-sharded past the 1,000-result cap, resumable, hits logged. **Needs `GITHUB_TOKEN`.**
+- [x] Snapshot store with per-skill manifests and licenses; filter; exact + MinHash dedup; corpus profile (`skillalign corpus`).
+- [ ] Run the GitHub crawl. Target: 2–5k skills.
+- **Must:** `anthropics/skills` and other official repos; a GitHub code-search sample of `SKILL.md` files (keep the whole skill directory). Filter, MinHash dedup, manifest per skill. Target: 2–5k skills.
+- **Stretch:** ClawHub / skills.sh (check ToS and robots.txt first); MalSkillBench / MaliciousSkillBench samples if the license allows.
 
-**Exit criterion:** a corpus statistics table and at least 1,000 drift candidates.
+> **Safety:** crawled content is untrusted. Parse it as text and ASTs only, store it without execute permissions, never run it.
 
-> **Safety:** crawled content is untrusted. Parse it as text and ASTs only, store it with no execute permissions, and never run it outside the sandbox.
+### M2: Normalization and intents (days 2–3)
+- [x] Normalizer (`skillalign normalize <dir>`): roles, languages, frontmatter, doc chunks with line ranges, fenced code as virtual files mapped back to real lines, HTML comments.
+- [ ] **Decide for M3:** most fenced code in SKILL.md is an *example*, not an instruction to run (the official pdf skill has 12 Python examples). Treat a virtual file as reachable only when the surrounding text tells the agent to run it; otherwise mark it `dormant`, or UB precision will suffer.
+- **Must:** roles, languages, frontmatter, fenced code as virtual files; B1 per-chunk claim extraction with a verbatim quote check; B2 action vocabulary (~40 verbs → expected capabilities); category classifier.
+- **Stretch:** B3 embedding clusters + LLM merge (v1 can merge by exact action/object).
 
-### M2: Normalization and intent extraction (weeks 2–4)
-- [ ] `normalize/*`: roles, languages, frontmatter, fenced code saved as virtual files with line mapping.
-- [ ] `intents/extract.py`: per-chunk claim extraction with guided JSON and a verbatim quote check.
-- [ ] `intents/canonicalize.py`: the action vocabulary (about 40 verbs → expected capabilities) and the category classifier (Qwen3-4B).
-- [ ] `intents/consolidate.py`: embedding clusters plus an LLM merge. `conflicts.py` finds contradictions between docs.
-- [ ] **Exit criterion:** intent recall ≥ 0.9 on the fixtures with Qwen3-8B. Record the 4B result as well.
+### M3: Behaviors (days 4–6, critical path)
+- **Must:** Python (`ast`) and shell detectors with constant resolution; config detector (deps, postinstall, hooks, `.mcp.json`, `allowed-tools`); hidden-content scan; import/call graph and reachability from entry points; def-use data flow inside functions plus call-argument flow; composite patterns (exfiltration, download-and-execute, persistence, credential harvesting); C4 instruction behaviors (LLM); cards.
+- **Stretch:** JS/TS beyond regex-level patterns; cross-language edges beyond "shell/SKILL.md names a script".
 
-### M3: Symbolic behavior extraction (weeks 3–6, the critical path)
-- [ ] `taxonomy.py`: API maps seeded from Cisco, Semgrep and Bandit rules.
-- [ ] `detectors/python.py`, `js.py`, `shell.py`: tree-sitter queries with constant resolution for URLs, paths, env names and command strings.
-- [ ] `detectors/config.py`: dependencies with a typosquat check, postinstall hooks, Claude Code hooks, `.mcp.json`, `allowed-tools`.
-- [ ] `detectors/hidden_content.py`: HTML comments, zero-width characters, base64 blobs, very long lines.
-- [ ] `callgraph.py` with cross-language edges; `reachability.py` from the entry points.
-- [ ] `dataflow.py`: the Semgrep taint adapter plus a light def-use pass.
-- [ ] `composite.py`: the pattern library from §6.3.
-- [ ] `instructions.py` (C4, local LLM).
-- [ ] `cards.py`: card templates. Unit-test that cards fit within about 300 tokens each.
-- [ ] **Exit criterion:** every fixture behavior and composite is recovered with the correct chain, and the pipeline runs on 100 random corpus skills without crashing.
+### M4: Alignment and report (days 6–7)
+- **Must:** D1 candidates, D2 checklist judge (n=5 votes, card IDs required), D3 implied table + narrow question, D4 rules, risk, JSON + Markdown report. Ablation flags from the start: `--no-instructions`, `--no-composite`, `--cards raw`, `--judge holistic`, `--no-implied-table`, `--votes`, `--model`.
+- **Exit:** `skillalign detect` runs on all fixtures; per-type F1 on fixtures is printed by `pytest -m fixtures`.
 
-### M4: Alignment, decisions, reports (weeks 5–7)
-- [ ] `align/candidates.py`: capability compatibility ∪ top-k by embedding.
-- [ ] `align/judge.py`: the checklist judge (guided JSON, n=5 votes, required card IDs).
-- [ ] `align/implied.py`: the implied table plus a fallback narrow question to the LLM.
-- [ ] `align/decide.py`, `risk.py`: deterministic rules.
-- [ ] `report/`: JSON and Markdown/HTML output.
-- [ ] Ablation flags wired in from the start: `--sources`, `--no-instructions`, `--no-composite`, `--no-crossfile`, `--cards raw`, `--judge {checklist,holistic,similarity}`, `--votes`, `--no-implied-table`, `--model`.
-- [ ] **Exit criterion:** zero-shot Qwen3-8B reaches F1 ≥ 0.75 per type on the fixtures, with end-to-end `skillalign detect <dir>`.
+### M5: Benchmark (days 2–13, in parallel)
+- **Day 2:** `docs/guideline.md`: definitions, decision procedure, implied table, edge cases.
+- **Day 3:** `bench/sample.py` (random + enriched), `bench/preannotate.py` (Qwen3-32B, whole skill with line numbers → `Annotation`), `bench/render.py` (Markdown view for review).
+- **Days 4–5:** pilot on 20 skills → revise guideline and pre-annotation prompt.
+- **Days 5–12:** check ~25 skills per day (≈ 4–5 h). Do the 20-skill from-scratch anchoring check early (before reading the LLM version).
+- **Day 7:** `bench/inject.py` with the six operators in PLAN.md §5.3 + `VAGUE_DOC`; separate templates for train and test; canary hosts only (`canary.local`).
+- **Day 13 (Sun 2026-11-08): freeze the test set** (repo-level split, ~30% dev / 70% test).
 
-### M5: Benchmark construction (weeks 2–8, runs in parallel)
-- [ ] **Week 2:** draft `docs/guideline.md`: definitions, the decision procedure, the implied table, edge cases, 3 or more worked examples per type.
-- [ ] **Week 3:** `bench/annotate_app.py`: file tree, code with line numbers, pre-filled intents and behaviors (no pre-filled findings), a linking UI, a timer, JSON output. `bench/agreement.py`: κ and span overlap.
-- [ ] **Week 3:** `bench/sample.py` (random and enriched) and `bench/triage.py` (all baselines ∪ Qwen3-4B screen).
-- [ ] **Week 3–4:** pilot on 30 shared skills, then revise the guideline and the implied table.
-- [ ] **Weeks 4–8:** main annotation. Test splits are double-annotated and adjudicated; dev skills get one annotator plus an LLM check. Run the 40-skill **anchoring check**.
-- [ ] **Weeks 5–6:** `bench/inject.py`: the 10 operators from §5.3, with **separate template sets for train and test**. Canary payloads point only at `canary.local`.
-- [ ] **Week 8: freeze the test set** (repo-level split). It is never edited after this point.
+### M6: Baselines (days 7–9)
+- **Must:** R2 rules, M1 similarity (threshold tuned on dev), L1 zero-shot 8B, L1-32B. All mapped to `Annotation`.
+- **Stretch:** R1 Cisco skill-scanner, S1 Semgrep/Bandit, L3 frontier API.
 
-Annotation pace to track weekly: about 230 person-hours in total, roughly 8 h per person per week. If the team falls behind, shrink the enriched split first.
+### M7: Evaluation (days 8–13)
+- **Must:** `eval/match.py` (strict + lenient, PLAN.md §8.1), metrics per type and split, bootstrap CIs, McNemar; main table (RQ2), the five must-ship ablations (RQ3), the 4B/8B/32B × thinking grid (RQ4), cost per skill (RQ5), prevalence on natural-random + corpus run on a few thousand skills with 50 findings checked (RQ1).
+- **Stretch:** LoRA judge on Colab (needs injected-train data from day 7).
 
-### M6: Baselines (weeks 5–8)
-- [ ] R1 `cisco.py`, R2 `rules.py`, S1 `static.py`, M1 `similarity.py` (threshold tuned on dev).
-- [ ] L1 `llm_zeroshot.py` (local 8B, whole skill truncated to fit), L2 `multiagent.py` (SkillProbe-style, local 8B), L3 the same prompt on the frontier API (week 9, test set only).
-- [ ] Map every output into the `Report` schema.
-
-### M7: SkillAlign-Judge fine-tuning (weeks 6–9)
-- [ ] `train/build_dataset.py`:
-  1. **Injected-train**: checklist targets derived exactly from operator metadata.
-  2. **Silver**: an API model fills in checklists for about 1–2k items from corpus skills *not in the benchmark* (week 7 batch). Keep only items where 2 of 3 API samples agree, or spot-check them.
-  3. Hold out 10% for validation.
-- [ ] `train/sft.py`: LoRA (or QLoRA) on Qwen3-8B, plus a 4B variant if time allows. Log every hyperparameter.
-- [ ] `train/eval_judge.py`: checklist accuracy on the dev split.
-- [ ] **Exit criterion:** the LoRA judge beats the zero-shot 8B judge on dev. If it does not, report that honestly and keep zero-shot with thinking mode as the main system.
-
-### M8: Dynamic stage (weeks 7–9, optional, the first thing to cut)
-- [ ] A sandbox image with canary secrets, a fake HOME, a mitmproxy egress proxy, strace or inotify.
-- [ ] Discover entry points and run them with arguments taken from the SKILL.md examples.
-- [ ] Turn traces into behaviors marked `observed_dynamically=True`.
-
-### M9: Evaluation and study (weeks 8–11)
-- [ ] `eval/match.py` (strict and lenient, PLAN.md §8.1), `metrics.py`, `stats.py` (bootstrap CIs, McNemar).
-- [ ] `eval/run.py`: every system × every split, with outputs in `data/runs/<system>/<date>/`.
-- [ ] RQ2 main table; RQ3 ablations; RQ4 grid (4B/8B × zero-shot/thinking/LoRA, plus the L3 reference); cost logging.
-- [ ] RQ1: run on the full corpus with local models, manually verify 100 sampled findings, compute prevalence from the natural-random split.
-- [ ] RQ5: 50 sampled findings, 3 raters.
-- [ ] Disclose confirmed malicious skills to the platforms.
-
-### M10: Paper and artifact (weeks 10–12)
-- [ ] Figures and tables as listed in PLAN.md §9.4.
-- [ ] Artifact: code, the neutralized benchmark, the guideline, prompts, LoRA weights, cached LLM responses, Docker image. Archive on Zenodo.
-- [ ] Threats to validity.
+### M8: Paper and artifact (days 13–17)
+- Figures and tables (PLAN.md §9.4), threats to validity, anonymous artifact repo with code, neutralized benchmark, guideline, prompts, cached responses.
 
 ---
 
 ## 5. Work split
 
-| Person | Owns | Also |
-|---|---|---|
-| **A: Data** | M1 collection, dedup, drift mining; RQ1 corpus run | Annotation |
-| **B: Static analysis** | M3 detectors, call graph, data flow, composites, cards; M8 dynamic | Annotation |
-| **C: LLM** | LLM client and vLLM setup, M2 intents, C4 instructions, M4 judge, M7 fine-tuning, RQ4 | Annotation |
-| **D: Benchmark and evaluation** | M5 guideline, app, sampling, injection, agreement; M6 baselines; M9 evaluation harness | Adjudication lead |
+**Now (one person):** follow the schedule in §6 in order; annotation runs in the afternoon slot on days 5–12.
 
-With only 3 people, merge D into A (data and benchmark), and have C take the baselines.
-
-**Weekly sync:** annotation hours versus target, fixture F1 per stage, open guideline questions, GPU and API spend.
+**If helpers join**, hand off in this order (each handoff removes the most hours from the critical path):
+1. **Annotation checker** (from day 5): reviews pre-annotated skills, double-checks 40 test skills for κ. Biggest win.
+2. **Data and baselines**: collection, dedup, R2/M1/L1, then R1/S1.
+3. **Evaluation and figures**: eval harness, stats, tables.
 
 ---
 
-## 6. Timeline (12 weeks)
+## 6. Schedule (17 days)
 
-| Week | Engineering | Benchmark |
-|---|---|---|
-| 1 | M0; vLLM up; fixtures | Crawlers start |
-| 2 | M2 starts | Guideline draft; crawl continues |
-| 3 | M2; M3 starts | Annotation app; sampling and triage; **pilot (30 skills)** |
-| 4 | M2 done; M3 | Guideline revised; **main annotation starts** |
-| 5 | M3; M4 starts; M6 starts | Annotation; injection operators |
-| 6 | M3 done; M4; M7 dataset; throughput measurement | Annotation; injected set built |
-| 7 | M4 done (end-to-end); **silver-label batch**; M7 training; M8 (optional) | Annotation; anchoring check |
-| 8 | M6 done; M9 starts on dev | **Test set frozen** |
-| 9 | M7 done; M8 done or dropped; **L3 API run**; main results | Adjudication wrap-up |
-| 10 | Ablations, RQ4 grid, RQ1 corpus run | κ / agreement report |
-| 11 | RQ5 ratings; disclosures; writing | |
-| 12 | Artifact; final paper | |
+| Day | Date | Engineering | Benchmark / paper |
+|---|---|---|---|
+| 1 | Tue 10-27 | **M0** (contracts, LLM client, fixtures) | — |
+| 2 | Wed 10-28 | M1 crawl; M2 normalizer | Guideline draft |
+| 3 | Thu 10-29 | M2 claims + vocabulary | Sampling; pre-annotation + render scripts |
+| 4 | Fri 10-30 | M3 Python/shell/config detectors | Pre-annotate the first batch on the GPU box |
+| 5 | Sat 10-31 | M3 call graph, data flow, composites | **Pilot (20 skills)**; anchoring set |
+| 6 | Sun 11-01 | M3 C4 + cards; **M4 judge** | Check ~25/day from here |
+| 7 | Mon 11-02 | **M4 end to end on fixtures**; throughput check | Injection operators |
+| 8 | Tue 11-03 | M6 R2, M1; eval harness | Check |
+| 9 | Wed 11-04 | M6 L1, L1-32B; first dev results | Check |
+| 10 | Thu 11-05 | Fix the worst error classes on dev | Check |
+| 11 | Fri 11-06 | Ablation runs on dev; (stretch) LoRA | Check |
+| 12 | Sat 11-07 | Corpus run (RQ1) | Finish checks |
+| 13 | Sun 11-08 | **Test set frozen**; all test runs, stats, figures | Paper: method + benchmark sections |
+| 14 | Mon 11-09 | Fill gaps | Paper: evaluation |
+| 15 | Tue 11-10 | — | Paper: intro, related work, threats |
+| 16 | Wed 11-11 | Artifact anonymization | Full draft, revise |
+| 17 | Thu 11-12 | — | Polish; **submit by Fri 11-13 AoE** |
 
-**Critical path:** contracts (M0) → symbolic behaviors (M3) → judge (M4) → evaluation (M9). **The biggest schedule risk is annotation (M5).** The pilot must happen in week 3.
+**Critical path:** contracts → behaviors (M3) → judge (M4) → test runs (day 13). **The biggest schedule risk is annotation pace**: track skills checked per day against the target of ~25.
 
-**What to cut, in order, if time runs out:** M8 dynamic → the L2 multi-agent baseline → 4B fine-tuning → the size of the enriched split → the RQ5 user rating (replace with author assessment).
+**Cut order if behind:** stretch items → enriched split down to 60 → injected test down to 100 → thinking-mode variants → L1-32B baseline → corpus run (keep prevalence from natural-random only).
 
 ---
 
 ## 7. Engineering rules
-- **Untrusted data.** Crawled skills are never imported or executed on the host. Anything that runs goes through the sandbox.
-- **Every claim needs a span.** Objects without a valid `Span` and card IDs are rejected at the model layer.
-- **Prompts are code.** Templates are versioned, and every report records the prompt hash, model ID, quantization and seed.
+- **Untrusted data.** Crawled skills are never imported or executed. No sandbox in v1.
+- **Every claim needs evidence.** `Evidence` must point at real lines and quote real text; `skillalign validate --root` enforces it.
+- **Prompts are code.** Templates are versioned; every `Annotation` records the system, model ID, prompt hash and seed in `provenance`.
 - **Determinism.** Temperature 0 for single calls; fixed seeds for voting; all responses cached and released.
 - **No tuning on test.** Prompts, thresholds, patterns and the implied table are tuned only on dev, fixtures and injected-train.
-- **Fair comparison.** All LLM baselines use the same local backbone and the same context budget as SkillAlign.
+- **Fair comparison.** L1 uses the same 8B backbone and context budget as SkillAlign.
 
 ---
 
-## 8. Decisions to make before implementation starts
+## 8. Decisions
 
-These come out of the planning phase. Settle each one before week 1.
+Settled on 2026-10-27:
+1. **Deadline and format:** 2026-11-13 AoE; 5–10 pages IEEE + 2 pages of references.
+2. **GPU:** RTX PRO 6000 96 GB for inference; Colab A100 40 GB for training only.
+3. **Annotation:** 180–300 skills, pre-annotated by Qwen3-32B and checked by a person.
+4. **Dynamic analysis, drift mining, L2:** out of scope for v1.
 
-1. **Official deadline and page limit** from the ICSE industry challenge CFP. They may change §6 and §9.4 of PLAN.md.
-2. **GPU inventory.** Model, VRAM, and whether the GPUs are shared. This decides bf16 vs. quantized models and LoRA vs. QLoRA.
-3. **API provider and dollar cap** for silver labels and L3.
-4. **Registries to crawl.** Confirm the ToS for ClawHub and skills.sh. Decide whether to request the MalSkillBench and MaliciousSkillBench data from their authors.
-5. **Annotation logistics.** Who annotates, weekly hours, the adjudicator.
-6. **Whether dynamic analysis (M8) is in scope** or explicitly future work.
-7. **Assign owners** for the A/B/C/D roles in §5.
+Still open:
+- API provider and dollar cap, if any (only affects the optional L3 run).
+- Registries beyond GitHub and official repos (ClawHub/skills.sh ToS).
+- Whether to recruit an annotation checker (recommended by day 5).
 
 ---
 

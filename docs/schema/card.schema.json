@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "Span": {
+      "additionalProperties": false,
+      "description": "A line range in one file, relative to the skill root. 1-based, inclusive.",
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "line_start": {
+          "minimum": 1,
+          "title": "Line Start",
+          "type": "integer"
+        },
+        "line_end": {
+          "minimum": 1,
+          "title": "Line End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "file",
+        "line_start",
+        "line_end"
+      ],
+      "title": "Span",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Templated evidence summary of one behavior: the only view of code the judge gets.",
+  "properties": {
+    "behavior_id": {
+      "title": "Behavior Id",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    },
+    "snippet": {
+      "title": "Snippet",
+      "type": "string"
+    },
+    "span": {
+      "$ref": "#/$defs/Span"
+    },
+    "chain": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Chain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "behavior_id",
+    "text",
+    "snippet",
+    "span"
+  ],
+  "title": "Card",
+  "type": "object"
+}

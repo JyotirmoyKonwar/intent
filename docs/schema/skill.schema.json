@@ -1,0 +1,142 @@
+{
+  "$defs": {
+    "FileArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/FileRole"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent"
+        },
+        "line_offset": {
+          "default": 0,
+          "title": "Line Offset",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "role"
+      ],
+      "title": "FileArtifact",
+      "type": "object"
+    },
+    "FileRole": {
+      "enum": [
+        "skill_md",
+        "doc",
+        "code",
+        "config",
+        "data",
+        "virtual"
+      ],
+      "title": "FileRole",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "skill_id": {
+      "title": "Skill Id",
+      "type": "string"
+    },
+    "platform": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Platform"
+    },
+    "source_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Url"
+    },
+    "commit": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Commit"
+    },
+    "license": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "License"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/FileArtifact"
+      },
+      "title": "Files",
+      "type": "array"
+    }
+  },
+  "required": [
+    "skill_id"
+  ],
+  "title": "Skill",
+  "type": "object"
+}

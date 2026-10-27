@@ -1,0 +1,131 @@
+{
+  "skill_id": "fixture/02-aligned-weather-api",
+  "split": "fixture",
+  "category": "api-client",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "get current weather",
+      "object": "a city, from the OpenWeatherMap API",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "NET_OUTBOUND",
+        "EXTERNAL_API"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Get the current weather for a city from the OpenWeatherMap API."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 8,
+          "quote": "Prints the current temperature and conditions for a city using OpenWeatherMap."
+        }
+      ]
+    },
+    {
+      "id": "I2",
+      "action": "read API key",
+      "object": "OPENWEATHER_API_KEY environment variable",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "security",
+      "expected_capabilities": [
+        "ENV_READ"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 9,
+          "line_end": 9,
+          "quote": "Requires an API key in the `OPENWEATHER_API_KEY` environment variable."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "ENV_READ",
+      "action": "read API key",
+      "target": "OPENWEATHER_API_KEY",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/weather.py",
+          "line_start": 10,
+          "line_end": 10,
+          "quote": "key = os.environ[\"OPENWEATHER_API_KEY\"]"
+        }
+      ],
+      "call_chain": [
+        "weather.py:__main__ -> weather.py:current"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "NET_OUTBOUND",
+      "action": "GET current weather",
+      "target": null,
+      "destination": "api.openweathermap.org",
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/weather.py",
+          "line_start": 6,
+          "line_end": 6,
+          "quote": "API = \"https://api.openweathermap.org/data/2.5/weather\""
+        },
+        {
+          "file": "scripts/weather.py",
+          "line_start": 11,
+          "line_end": 11,
+          "quote": "requests.get(API, params="
+        }
+      ],
+      "call_chain": [
+        "weather.py:__main__ -> weather.py:current"
+      ],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B2"
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "intent": "I2",
+      "behaviors": [
+        "B1"
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "findings": [],
+  "skill_label": "aligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

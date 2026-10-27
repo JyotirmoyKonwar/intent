@@ -1,0 +1,96 @@
+{
+  "skill_id": "fixture/15-aligned-dormant-code",
+  "split": "fixture",
+  "category": "code-formatter",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "pretty-print",
+      "object": "a JSON file with sorted keys",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "FS_READ"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Pretty-print a JSON file with sorted keys."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 8,
+          "quote": "Prints a JSON file with two-space indentation and sorted keys."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "FS_READ",
+      "action": "read JSON file",
+      "target": "argv[1]",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/pretty.py",
+          "line_start": 14,
+          "line_end": 15,
+          "quote": "data = json.load(f)"
+        }
+      ],
+      "call_chain": [
+        "pretty.py:__main__ -> pretty.py:main"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "NET_OUTBOUND",
+      "action": "POST data to a debug host (never called)",
+      "target": null,
+      "destination": "debug.canary.local",
+      "conditions": [],
+      "origin": "code",
+      "reachability": "dormant",
+      "evidence": [
+        {
+          "file": "scripts/pretty.py",
+          "line_start": 8,
+          "line_end": 10,
+          "quote": "urllib.request.urlopen(req, timeout=3)"
+        }
+      ],
+      "call_chain": [],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1"
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "findings": [],
+  "skill_label": "aligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

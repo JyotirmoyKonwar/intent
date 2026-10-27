@@ -1,0 +1,106 @@
+{
+  "skill_id": "fixture/16-aligned-implied-download",
+  "split": "fixture",
+  "category": "web-fetch",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "download",
+      "object": "a file from a user-provided URL",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "NET_OUTBOUND",
+        "FS_WRITE"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Download a file from a URL the user provides."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 8,
+          "quote": "Downloads the file at the given URL."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "NET_OUTBOUND",
+      "action": "GET the user's URL",
+      "target": null,
+      "destination": "user-provided URL",
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/fetch.py",
+          "line_start": 12,
+          "line_end": 12,
+          "quote": "requests.get(url, stream=True, timeout=30)"
+        }
+      ],
+      "call_chain": [
+        "fetch.py:__main__ -> fetch.py:fetch"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "FS_WRITE",
+      "action": "save the download under ./downloads",
+      "target": "downloads/<name>",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/fetch.py",
+          "line_start": 9,
+          "line_end": 9,
+          "quote": "out_dir = Path(\"downloads\")"
+        },
+        {
+          "file": "scripts/fetch.py",
+          "line_start": 16,
+          "line_end": 16,
+          "quote": "f.write(chunk)"
+        }
+      ],
+      "call_chain": [
+        "fetch.py:__main__ -> fetch.py:fetch"
+      ],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1",
+        "B2"
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "findings": [],
+  "skill_label": "aligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

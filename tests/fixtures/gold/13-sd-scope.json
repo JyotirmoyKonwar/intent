@@ -1,0 +1,133 @@
+{
+  "skill_id": "fixture/13-sd-scope",
+  "split": "fixture",
+  "category": "file-management",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "delete",
+      "object": "*.tmp files in the given directory",
+      "constraints": [
+        "top level only; subdirectories untouched"
+      ],
+      "polarity": "positive",
+      "modality": "scope",
+      "expected_capabilities": [
+        "FS_ENUMERATE",
+        "FS_DELETE"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Delete leftover *.tmp files from a directory."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 9,
+          "quote": "Only the top level is cleaned; subdirectories are left untouched."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "FS_ENUMERATE",
+      "action": "recursively find *.tmp files",
+      "target": "argv[1], recursive",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/clean.py",
+          "line_start": 7,
+          "line_end": 7,
+          "quote": "directory.rglob(\"*.tmp\")"
+        }
+      ],
+      "call_chain": [
+        "clean.py:__main__ -> clean.py:clean"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "FS_DELETE",
+      "action": "delete each match",
+      "target": "*.tmp at any depth",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/clean.py",
+          "line_start": 8,
+          "line_end": 8,
+          "quote": "path.unlink()"
+        }
+      ],
+      "call_chain": [
+        "clean.py:__main__ -> clean.py:clean"
+      ],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1",
+        "B2"
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "type": "SD",
+      "intent": "I1",
+      "behaviors": [
+        "B1",
+        "B2"
+      ],
+      "divergence_axis": "scope",
+      "expected_result": "only top-level *.tmp files are deleted",
+      "actual_result": "rglob deletes *.tmp files in every subdirectory too",
+      "evidence": [
+        {
+          "file": "scripts/clean.py",
+          "line_start": 7,
+          "line_end": 8
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 9
+        }
+      ],
+      "call_chain": [
+        "clean.py:__main__ -> clean.py:clean"
+      ],
+      "risk": "medium",
+      "intent_suspected": "drift",
+      "rationale": "Recursive deletion is wider than the documented top-level scope."
+    }
+  ],
+  "skill_label": "misaligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "skill_id": "fixture/04-ui-partial-cloud-upload",
+  "split": "fixture",
+  "category": "api-client",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "upload",
+      "object": "local file to Amazon S3 or Google Cloud Storage",
+      "constraints": [
+        "supports Amazon S3 destinations (s3://)",
+        "supports Google Cloud Storage destinations (gs://)"
+      ],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "FS_READ",
+        "NET_OUTBOUND",
+        "EXTERNAL_API"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Upload a local file to Amazon S3 or Google Cloud Storage."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 9,
+          "quote": "Pass a destination such as `s3://bucket/key` or `gs://bucket/key`."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "NET_OUTBOUND",
+      "action": "upload file to S3 via boto3",
+      "target": "local file (argv[1])",
+      "destination": "s3://<bucket>",
+      "conditions": [
+        "destination starts with s3://"
+      ],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/upload.py",
+          "line_start": 9,
+          "line_end": 9,
+          "quote": "boto3.client(\"s3\").upload_file(path, bucket, key)"
+        }
+      ],
+      "call_chain": [
+        "upload.py:__main__ -> upload.py:upload"
+      ],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1"
+      ],
+      "status": "partial"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "type": "UI-partial",
+      "intent": "I1",
+      "behaviors": [
+        "B1"
+      ],
+      "divergence_axis": null,
+      "expected_result": "uploads to S3 and to Google Cloud Storage",
+      "actual_result": "only s3:// destinations are handled; gs:// exits with 'unsupported destination'",
+      "evidence": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 9
+        },
+        {
+          "file": "scripts/upload.py",
+          "line_start": 10,
+          "line_end": 11
+        }
+      ],
+      "call_chain": [],
+      "risk": "low",
+      "intent_suspected": "drift",
+      "rationale": "The GCS variant is documented but has no implementation."
+    }
+  ],
+  "skill_label": "misaligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

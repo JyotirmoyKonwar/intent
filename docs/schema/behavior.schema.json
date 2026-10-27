@@ -1,0 +1,176 @@
+{
+  "$defs": {
+    "Capability": {
+      "description": "Capability taxonomy v1 (PLAN.md \u00a74.3).",
+      "enum": [
+        "FS_READ",
+        "FS_WRITE",
+        "FS_DELETE",
+        "FS_ENUMERATE",
+        "ENV_READ",
+        "CREDENTIAL_ACCESS",
+        "NET_OUTBOUND",
+        "NET_INBOUND",
+        "DNS",
+        "DOWNLOAD_EXEC",
+        "PROC_EXEC",
+        "CODE_EVAL",
+        "PRIV_ESCALATION",
+        "PERSISTENCE",
+        "SYS_CONFIG_MODIFY",
+        "PKG_INSTALL",
+        "ENCODE_OBFUSCATE",
+        "DATA_TRANSFORM",
+        "AGENT_INSTRUCTION",
+        "TOOL_PERMISSION",
+        "EXTERNAL_API",
+        "USER_INTERACTION",
+        "COMPOSITE"
+      ],
+      "title": "Capability",
+      "type": "string"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "description": "A span plus the text it points at. `quote` must appear within those lines.",
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "line_start": {
+          "minimum": 1,
+          "title": "Line Start",
+          "type": "integer"
+        },
+        "line_end": {
+          "minimum": 1,
+          "title": "Line End",
+          "type": "integer"
+        },
+        "quote": {
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "line_start",
+        "line_end",
+        "quote"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Origin": {
+      "enum": [
+        "code",
+        "agent-instruction",
+        "config",
+        "dependency"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "Reachability": {
+      "enum": [
+        "entry",
+        "reachable",
+        "dormant"
+      ],
+      "title": "Reachability",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^B\\d+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "capability": {
+      "$ref": "#/$defs/Capability"
+    },
+    "action": {
+      "title": "Action",
+      "type": "string"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target"
+    },
+    "destination": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Destination"
+    },
+    "conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Conditions",
+      "type": "array"
+    },
+    "origin": {
+      "$ref": "#/$defs/Origin",
+      "default": "code"
+    },
+    "reachability": {
+      "$ref": "#/$defs/Reachability",
+      "default": "reachable"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "minItems": 1,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "call_chain": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Call Chain",
+      "type": "array"
+    },
+    "composite_of": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Composite Of",
+      "type": "array"
+    },
+    "observed_dynamically": {
+      "default": false,
+      "title": "Observed Dynamically",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "capability",
+    "action",
+    "evidence"
+  ],
+  "title": "Behavior",
+  "type": "object"
+}

@@ -1,0 +1,660 @@
+{
+  "$defs": {
+    "Alignment": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "title": "Intent",
+          "type": "string"
+        },
+        "behaviors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Behaviors",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/AlignmentStatus"
+        }
+      },
+      "required": [
+        "intent",
+        "status"
+      ],
+      "title": "Alignment",
+      "type": "object"
+    },
+    "AlignmentStatus": {
+      "enum": [
+        "fulfilled",
+        "partial",
+        "unfulfilled"
+      ],
+      "title": "AlignmentStatus",
+      "type": "string"
+    },
+    "Axis": {
+      "enum": [
+        "object",
+        "scope",
+        "destination",
+        "condition",
+        "magnitude",
+        "negative-claim"
+      ],
+      "title": "Axis",
+      "type": "string"
+    },
+    "Behavior": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^B\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "capability": {
+          "$ref": "#/$defs/Capability"
+        },
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target"
+        },
+        "destination": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destination"
+        },
+        "conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin",
+          "default": "code"
+        },
+        "reachability": {
+          "$ref": "#/$defs/Reachability",
+          "default": "reachable"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "call_chain": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Call Chain",
+          "type": "array"
+        },
+        "composite_of": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Composite Of",
+          "type": "array"
+        },
+        "observed_dynamically": {
+          "default": false,
+          "title": "Observed Dynamically",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "capability",
+        "action",
+        "evidence"
+      ],
+      "title": "Behavior",
+      "type": "object"
+    },
+    "Capability": {
+      "description": "Capability taxonomy v1 (PLAN.md \u00a74.3).",
+      "enum": [
+        "FS_READ",
+        "FS_WRITE",
+        "FS_DELETE",
+        "FS_ENUMERATE",
+        "ENV_READ",
+        "CREDENTIAL_ACCESS",
+        "NET_OUTBOUND",
+        "NET_INBOUND",
+        "DNS",
+        "DOWNLOAD_EXEC",
+        "PROC_EXEC",
+        "CODE_EVAL",
+        "PRIV_ESCALATION",
+        "PERSISTENCE",
+        "SYS_CONFIG_MODIFY",
+        "PKG_INSTALL",
+        "ENCODE_OBFUSCATE",
+        "DATA_TRANSFORM",
+        "AGENT_INSTRUCTION",
+        "TOOL_PERMISSION",
+        "EXTERNAL_API",
+        "USER_INTERACTION",
+        "COMPOSITE"
+      ],
+      "title": "Capability",
+      "type": "string"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "description": "A span plus the text it points at. `quote` must appear within those lines.",
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "line_start": {
+          "minimum": 1,
+          "title": "Line Start",
+          "type": "integer"
+        },
+        "line_end": {
+          "minimum": 1,
+          "title": "Line End",
+          "type": "integer"
+        },
+        "quote": {
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "line_start",
+        "line_end",
+        "quote"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^F\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/FindingType"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "behaviors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Behaviors",
+          "type": "array"
+        },
+        "divergence_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Axis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "expected_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Result"
+        },
+        "actual_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actual Result"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Span"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "call_chain": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Call Chain",
+          "type": "array"
+        },
+        "risk": {
+          "$ref": "#/$defs/Risk",
+          "default": "low"
+        },
+        "intent_suspected": {
+          "$ref": "#/$defs/Suspected",
+          "default": "unclear"
+        },
+        "rationale": {
+          "default": "",
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "evidence"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "FindingType": {
+      "enum": [
+        "UI",
+        "UI-partial",
+        "UB",
+        "SD"
+      ],
+      "title": "FindingType",
+      "type": "string"
+    },
+    "Intent": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^I\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "object": {
+          "title": "Object",
+          "type": "string"
+        },
+        "constraints": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "polarity": {
+          "$ref": "#/$defs/Polarity",
+          "default": "positive"
+        },
+        "modality": {
+          "$ref": "#/$defs/Modality",
+          "default": "functional"
+        },
+        "expected_capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "title": "Expected Capabilities",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "action",
+        "object",
+        "sources"
+      ],
+      "title": "Intent",
+      "type": "object"
+    },
+    "Modality": {
+      "enum": [
+        "functional",
+        "security",
+        "scope",
+        "data-handling"
+      ],
+      "title": "Modality",
+      "type": "string"
+    },
+    "Origin": {
+      "enum": [
+        "code",
+        "agent-instruction",
+        "config",
+        "dependency"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "Polarity": {
+      "enum": [
+        "positive",
+        "negative"
+      ],
+      "title": "Polarity",
+      "type": "string"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Who produced an annotation: a person, the pre-annotator, SkillAlign, a baseline.",
+      "properties": {
+        "system": {
+          "title": "System",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "prompt_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Hash"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "system"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Reachability": {
+      "enum": [
+        "entry",
+        "reachable",
+        "dormant"
+      ],
+      "title": "Reachability",
+      "type": "string"
+    },
+    "Risk": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Risk",
+      "type": "string"
+    },
+    "SkillLabel": {
+      "enum": [
+        "aligned",
+        "misaligned"
+      ],
+      "title": "SkillLabel",
+      "type": "string"
+    },
+    "Span": {
+      "additionalProperties": false,
+      "description": "A line range in one file, relative to the skill root. 1-based, inclusive.",
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "line_start": {
+          "minimum": 1,
+          "title": "Line Start",
+          "type": "integer"
+        },
+        "line_end": {
+          "minimum": 1,
+          "title": "Line End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "file",
+        "line_start",
+        "line_end"
+      ],
+      "title": "Span",
+      "type": "object"
+    },
+    "Split": {
+      "enum": [
+        "fixture",
+        "natural-random",
+        "natural-enriched",
+        "drift",
+        "injected"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "Suspected": {
+      "enum": [
+        "drift",
+        "deliberate",
+        "unclear"
+      ],
+      "title": "Suspected",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One skill's labels (gold) or one system's output (prediction). PLAN.md \u00a75.5.",
+  "properties": {
+    "skill_id": {
+      "title": "Skill Id",
+      "type": "string"
+    },
+    "split": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Split"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "category": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Category"
+    },
+    "intents": {
+      "items": {
+        "$ref": "#/$defs/Intent"
+      },
+      "title": "Intents",
+      "type": "array"
+    },
+    "behaviors": {
+      "items": {
+        "$ref": "#/$defs/Behavior"
+      },
+      "title": "Behaviors",
+      "type": "array"
+    },
+    "alignment": {
+      "items": {
+        "$ref": "#/$defs/Alignment"
+      },
+      "title": "Alignment",
+      "type": "array"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "skill_label": {
+      "$ref": "#/$defs/SkillLabel"
+    },
+    "annotators": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Annotators",
+      "type": "array"
+    },
+    "prefilled": {
+      "default": false,
+      "title": "Prefilled",
+      "type": "boolean"
+    },
+    "adjudicated": {
+      "default": false,
+      "title": "Adjudicated",
+      "type": "boolean"
+    },
+    "minutes_spent": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Minutes Spent"
+    },
+    "provenance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Provenance"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "skill_id",
+    "skill_label"
+  ],
+  "title": "Annotation",
+  "type": "object"
+}

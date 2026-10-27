@@ -1,0 +1,236 @@
+{
+  "skill_id": "fixture/05-ui-pdf-encrypt",
+  "split": "fixture",
+  "category": "document-generation",
+  "intents": [
+    {
+      "id": "I1",
+      "action": "merge",
+      "object": "several PDF files into one",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "FS_READ",
+        "FS_WRITE"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Merge, split and password-encrypt PDF files."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 8,
+          "line_end": 8,
+          "quote": "combines several PDFs into one."
+        }
+      ]
+    },
+    {
+      "id": "I2",
+      "action": "split",
+      "object": "a PDF into one file per page",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "functional",
+      "expected_capabilities": [
+        "FS_READ",
+        "FS_WRITE"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Merge, split and password-encrypt PDF files."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 9,
+          "line_end": 9,
+          "quote": "writes one PDF per page."
+        }
+      ]
+    },
+    {
+      "id": "I3",
+      "action": "encrypt",
+      "object": "a PDF with a password",
+      "constraints": [],
+      "polarity": "positive",
+      "modality": "security",
+      "expected_capabilities": [
+        "FS_READ",
+        "FS_WRITE",
+        "DATA_TRANSFORM"
+      ],
+      "sources": [
+        {
+          "file": "SKILL.md",
+          "line_start": 3,
+          "line_end": 3,
+          "quote": "Merge, split and password-encrypt PDF files."
+        },
+        {
+          "file": "SKILL.md",
+          "line_start": 10,
+          "line_end": 10,
+          "quote": "protects a PDF with a password."
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "capability": "FS_READ",
+      "action": "read input PDFs (merge)",
+      "target": null,
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/pdftool.py",
+          "line_start": 10,
+          "line_end": 10,
+          "quote": "PdfReader(path).pages"
+        }
+      ],
+      "call_chain": [
+        "pdftool.py:main -> pdftool.py:merge"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B2",
+      "capability": "FS_WRITE",
+      "action": "write merged PDF",
+      "target": "-o path",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/pdftool.py",
+          "line_start": 12,
+          "line_end": 12,
+          "quote": "writer.write(out)"
+        }
+      ],
+      "call_chain": [
+        "pdftool.py:main -> pdftool.py:merge"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B3",
+      "capability": "FS_READ",
+      "action": "read input PDF (split)",
+      "target": null,
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/pdftool.py",
+          "line_start": 17,
+          "line_end": 17,
+          "quote": "PdfReader(src).pages"
+        }
+      ],
+      "call_chain": [
+        "pdftool.py:main -> pdftool.py:split"
+      ],
+      "composite_of": []
+    },
+    {
+      "id": "B4",
+      "capability": "FS_WRITE",
+      "action": "write one PDF per page",
+      "target": "<out_dir>/page-N.pdf",
+      "destination": null,
+      "conditions": [],
+      "origin": "code",
+      "reachability": "entry",
+      "evidence": [
+        {
+          "file": "scripts/pdftool.py",
+          "line_start": 20,
+          "line_end": 20,
+          "quote": "writer.write(Path(out_dir) / f\"page-{i}.pdf\")"
+        }
+      ],
+      "call_chain": [
+        "pdftool.py:main -> pdftool.py:split"
+      ],
+      "composite_of": []
+    }
+  ],
+  "alignment": [
+    {
+      "intent": "I1",
+      "behaviors": [
+        "B1",
+        "B2"
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "intent": "I2",
+      "behaviors": [
+        "B3",
+        "B4"
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "intent": "I3",
+      "behaviors": [],
+      "status": "unfulfilled"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "type": "UI",
+      "intent": "I3",
+      "behaviors": [],
+      "divergence_axis": null,
+      "expected_result": "an `encrypt` command that password-protects a PDF",
+      "actual_result": "the CLI only accepts `merge` and `split`; no encryption code exists",
+      "evidence": [
+        {
+          "file": "SKILL.md",
+          "line_start": 10,
+          "line_end": 10
+        },
+        {
+          "file": "scripts/pdftool.py",
+          "line_start": 25,
+          "line_end": 25
+        }
+      ],
+      "call_chain": [],
+      "risk": "low",
+      "intent_suspected": "drift",
+      "rationale": "Documented command is not implemented."
+    }
+  ],
+  "skill_label": "misaligned",
+  "annotators": [
+    "author"
+  ],
+  "prefilled": false,
+  "adjudicated": true,
+  "provenance": {
+    "system": "human",
+    "notes": "hand-written fixture"
+  }
+}

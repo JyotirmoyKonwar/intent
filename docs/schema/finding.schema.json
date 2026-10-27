@@ -1,0 +1,174 @@
+{
+  "$defs": {
+    "Axis": {
+      "enum": [
+        "object",
+        "scope",
+        "destination",
+        "condition",
+        "magnitude",
+        "negative-claim"
+      ],
+      "title": "Axis",
+      "type": "string"
+    },
+    "FindingType": {
+      "enum": [
+        "UI",
+        "UI-partial",
+        "UB",
+        "SD"
+      ],
+      "title": "FindingType",
+      "type": "string"
+    },
+    "Risk": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Risk",
+      "type": "string"
+    },
+    "Span": {
+      "additionalProperties": false,
+      "description": "A line range in one file, relative to the skill root. 1-based, inclusive.",
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "line_start": {
+          "minimum": 1,
+          "title": "Line Start",
+          "type": "integer"
+        },
+        "line_end": {
+          "minimum": 1,
+          "title": "Line End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "file",
+        "line_start",
+        "line_end"
+      ],
+      "title": "Span",
+      "type": "object"
+    },
+    "Suspected": {
+      "enum": [
+        "drift",
+        "deliberate",
+        "unclear"
+      ],
+      "title": "Suspected",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^F\\d+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/FindingType"
+    },
+    "intent": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Intent"
+    },
+    "behaviors": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Behaviors",
+      "type": "array"
+    },
+    "divergence_axis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Axis"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "expected_result": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Result"
+    },
+    "actual_result": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Result"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Span"
+      },
+      "minItems": 1,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "call_chain": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Call Chain",
+      "type": "array"
+    },
+    "risk": {
+      "$ref": "#/$defs/Risk",
+      "default": "low"
+    },
+    "intent_suspected": {
+      "$ref": "#/$defs/Suspected",
+      "default": "unclear"
+    },
+    "rationale": {
+      "default": "",
+      "title": "Rationale",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "evidence"
+  ],
+  "title": "Finding",
+  "type": "object"
+}
