@@ -111,7 +111,8 @@ def collect_repo_cmd(repo: Annotated[str, typer.Argument(help="owner/name on Git
 
 
 @collect_app.command("github")
-def collect_github_cmd(max_repos: int = 1000, query: str = "filename:SKILL.md") -> None:
+def collect_github_cmd(max_repos: int = 1000, query: str = "filename:SKILL.md",
+                       max_skills_per_repo: int = 50) -> None:
     """Find skills with GitHub code search (needs GITHUB_TOKEN) and snapshot them."""
     import logging
 
@@ -120,7 +121,8 @@ def collect_github_cmd(max_repos: int = 1000, query: str = "filename:SKILL.md") 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     client = GitHubClient()
     ms = collect_github(client, _store(), get_settings().data_dir / "raw" / "github",
-                        query=query, max_repos=max_repos)
+                        query=query, max_repos=max_repos,
+                        max_skills_per_repo=max_skills_per_repo)
     typer.echo(f"{len(ms)} new skills, {client.requests} requests")
 
 

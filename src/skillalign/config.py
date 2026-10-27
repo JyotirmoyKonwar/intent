@@ -1,5 +1,8 @@
 """Settings, read from environment variables (prefix SKILLALIGN_).
 
+Variables can also live in a `.env` file at the repo root (gitignored; see `.env.example`).
+Real environment variables take precedence over the file.
+
 The LLM endpoint is any OpenAI-compatible server: vLLM on the GPU box
 (e.g. via an SSH tunnel to localhost:8000) or ollama on a laptop.
 """
@@ -11,6 +14,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def load_dotenv(path: Path = REPO_ROOT / ".env") -> None:
+    """Load KEY=value lines from `path` into os.environ without overriding existing values."""
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip().removeprefix("export ")
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        os.environ.setdefault(key.strip(), value)
+
+
+load_dotenv()
 
 
 def _env(name: str, default: str) -> str:

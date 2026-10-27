@@ -13,3 +13,6 @@ wheels/
 data/
 .pytest_cache/
 .ruff_cache/
+
+# Secrets (GITHUB_TOKEN etc.)
+.env

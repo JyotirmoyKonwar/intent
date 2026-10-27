@@ -86,9 +86,20 @@ def _rank(m: Manifest) -> tuple:
     return (m.platform != "official", -(m.repo_stars or 0), m.key)
 
 
+MAX_PER_REPO = 50  # same cap as the collector; applied here too for skills already on disk
+
+
 def dedup(store: CorpusStore) -> DedupResult:
     manifests = {m.key: m for m in store.manifests()}
     filtered = {k: r for k, m in manifests.items() if (r := filter_reason(m))}
+    by_repo: dict[str, list[str]] = defaultdict(list)
+    for k, m in manifests.items():
+        if k not in filtered:
+            by_repo[m.repo].append(k)
+    for ks in by_repo.values():
+        ks.sort(key=lambda k: _rank(manifests[k]))
+        for k in ks[MAX_PER_REPO:]:
+            filtered[k] = "repo-cap"
     keys = sorted(k for k in manifests if k not in filtered)
 
     parent = {k: k for k in keys}

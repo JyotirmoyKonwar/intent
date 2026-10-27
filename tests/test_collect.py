@@ -1,10 +1,12 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
 import httpx
 import pytest
 
+import skillalign.collect.dedup as dedup_mod
 from skillalign.collect import github
 from skillalign.collect.dedup import dedup
 from skillalign.collect.profile import profile
@@ -198,6 +200,18 @@ def add(store, key, text, platform="github", stars=0, extra=None):
     store.write(m, [("SKILL.md", text.encode()), *(extra or {}).items()])
 
 
+def test_dedup_caps_skills_per_repo(tmp_path):
+    store = CorpusStore(tmp_path)
+    for i in range(dedup_mod.MAX_PER_REPO + 5):
+        text = SKILL.format(name=f"s{i}", desc="d", body=" ".join(f"s{i}w{j}" for j in range(400)))
+        store.write(Manifest(key=f"big-{i:03d}", skill_id=f"big-{i:03d}", platform="github",
+                             repo="o/big", repo_stars=1, has_frontmatter=True,
+                             description="d"), [("SKILL.md", text.encode())])
+    res = dedup(store)
+    assert sum(r == "repo-cap" for r in res.filtered.values()) == 5
+    assert len(res.canonical) == dedup_mod.MAX_PER_REPO
+
+
 def test_dedup_exact_near_and_filter(tmp_path):
     store = CorpusStore(tmp_path)
     base = SKILL.format(name="x", desc="d", body=LONG)
@@ -215,3 +229,19 @@ def test_dedup_exact_near_and_filter(tmp_path):
 
     summary = profile(store, res.canonical, tmp_path / "p.jsonl")
     assert summary["skills"] == 2 and summary["instruction_only"] == 2
+
+
+def test_load_dotenv(tmp_path, monkeypatch):
+    from skillalign.config import load_dotenv
+
+    env = tmp_path / ".env"
+    env.write_text('# c\nFOO_A=one\nexport FOO_B="two words"\nFOO_C=keep\n')
+    monkeypatch.delenv("FOO_A", raising=False)
+    monkeypatch.delenv("FOO_B", raising=False)
+    monkeypatch.setenv("FOO_C", "from-env")
+    load_dotenv(env)
+    assert os.environ["FOO_A"] == "one"
+    assert os.environ["FOO_B"] == "two words"
+    assert os.environ["FOO_C"] == "from-env"
+    monkeypatch.delenv("FOO_A")
+    monkeypatch.delenv("FOO_B")

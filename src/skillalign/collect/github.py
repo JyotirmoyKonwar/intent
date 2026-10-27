@@ -39,6 +39,9 @@ API = "https://api.github.com"
 RAW = "https://raw.githubusercontent.com"
 MAX_RESULTS_PER_QUERY = 1000
 MAX_SIZE = 384_000  # GitHub only indexes files below this size
+# One repo can hold thousands of near-identical skills (javimosch/supercli has 5,432),
+# which would swamp the corpus. Keep the first N per repo, in path order.
+MAX_SKILLS_PER_REPO = 50
 
 
 class GitHubClient:
@@ -159,7 +162,8 @@ def _license_for(client: GitHubClient, repo: str, commit: str, tree: list[dict],
     return (repo_spdx if repo_spdx and repo_spdx != "NOASSERTION" else "unknown"), None
 
 
-def collect_repo_via_api(client: GitHubClient, store: CorpusStore, repo: str) -> list[Manifest]:
+def collect_repo_via_api(client: GitHubClient, store: CorpusStore, repo: str,
+                         max_skills: int = MAX_SKILLS_PER_REPO) -> list[Manifest]:
     info = client.json(f"/repos/{repo}")
     if info.get("fork") or info.get("size", 1) == 0:  # forks duplicate their parent
         return []
@@ -168,7 +172,7 @@ def collect_repo_via_api(client: GitHubClient, store: CorpusStore, repo: str) ->
     stars = info.get("stargazers_count")
     spdx = (info.get("license") or {}).get("spdx_id")
     out = []
-    for skill_dir in _skill_dirs(tree):
+    for skill_dir in _skill_dirs(tree)[:max_skills]:
         key = skill_key("github", repo, skill_dir)
         if store.has(key):
             continue
@@ -199,8 +203,9 @@ def collect_repo_via_api(client: GitHubClient, store: CorpusStore, repo: str) ->
 
 
 def collect_github(client: GitHubClient, store: CorpusStore, log_dir: Path, *,
-                   query: str = "filename:SKILL.md", max_repos: int = 1000) -> list[Manifest]:
-    """Search, then snapshot every skill in up to `max_repos` distinct repos."""
+                   query: str = "filename:SKILL.md", max_repos: int = 1000,
+                   max_skills_per_repo: int = MAX_SKILLS_PER_REPO) -> list[Manifest]:
+    """Search, then snapshot up to `max_skills_per_repo` skills from each of `max_repos` repos."""
     log_dir.mkdir(parents=True, exist_ok=True)
     repos: list[str] = []
     with (log_dir / "search_hits.jsonl").open("a") as hits:
@@ -215,7 +220,7 @@ def collect_github(client: GitHubClient, store: CorpusStore, log_dir: Path, *,
     out = []
     for i, repo in enumerate(repos, 1):
         try:
-            out += collect_repo_via_api(client, store, repo)
+            out += collect_repo_via_api(client, store, repo, max_skills_per_repo)
         except httpx.HTTPError as err:
             log.warning("skipping %s: %s", repo, err)
         if i % 25 == 0:

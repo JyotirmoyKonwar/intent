@@ -48,7 +48,7 @@ Everything goes under `data/` (gitignored). Crawled skills are stored as plain t
 uv run skillalign collect official
 ```
 
-GitHub code search needs a token. Create a fine-grained token with read-only access to public repositories, export it as `GITHUB_TOKEN`, then:
+GitHub code search needs a token. Create a fine-grained token with read-only access to public repositories, put it in a `.env` file at the repo root (gitignored; copy `.env.example`) as `GITHUB_TOKEN=...`, then:
 
 ```bash
 uv run skillalign collect github --max-repos 1500
