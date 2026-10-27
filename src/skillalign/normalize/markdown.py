@@ -51,6 +51,7 @@ class CodeBlock:
     line_start: int  # first content line (after the opening fence)
     line_end: int  # last content line; < line_start for an empty block
     text: str
+    fenced: bool = False  # True for ``` / ~~~ fences, False for indented blocks
 
 
 @dataclass
@@ -116,7 +117,7 @@ def parse_markdown(text: str) -> MarkdownDoc:
             content_end = end - 1 if closed else end
             blocks.append(CodeBlock(lang=(tok.info.split() or [""])[0].lower(),
                                     line_start=start + 1, line_end=content_end,
-                                    text=tok.content.rstrip("\n")))
+                                    text=tok.content.rstrip("\n"), fenced=True))
         elif tok.type == "code_block":  # indented code
             blocks.append(CodeBlock(lang="", line_start=start, line_end=end,
                                     text=tok.content.rstrip("\n")))

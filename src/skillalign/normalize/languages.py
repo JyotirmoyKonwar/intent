@@ -36,6 +36,38 @@ FENCE_LANG = {
     "html": "html", "css": "css", "applescript": "applescript",
 }
 
+#: First words that mark an untagged fence as a shell session (a command the agent may run).
+SHELL_WORDS = {
+    "git", "npm", "npx", "pnpm", "yarn", "uv", "uvx", "pip", "pip3", "pipx", "python",
+    "python3", "node", "deno", "bun", "go", "cargo", "make", "docker", "docker-compose",
+    "kubectl", "brew", "apt", "apt-get", "sudo", "curl", "wget", "bash", "sh", "zsh",
+    "chmod", "chown", "cd", "mkdir", "rm", "cp", "mv", "ln", "touch", "cat", "echo", "ls",
+    "grep", "sed", "awk", "find", "tar", "unzip", "export", "source", "ssh", "scp", "rsync",
+    "vllm", "ollama", "gh", "jq", "xargs", "env",
+}
+
+
+def sniff_untagged_fence(text: str) -> str | None:
+    """Language for a fence with no info string: "shell" when its first command looks like one.
+
+    Only the first non-blank line is checked. A leading `$ ` or `> ` prompt is ignored, and
+    so is a shebang line, which `shebang_language` already reads. Prose and placeholders
+    such as `<CLI> metrics` stay unknown.
+    """
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if s.startswith("#!"):
+            return shebang_language(s)
+        s = s.removeprefix("$ ").removeprefix("> ")
+        word = s.split(maxsplit=1)[0] if s else ""
+        if word.startswith("./") or word in SHELL_WORDS:
+            return "shell"
+        return None
+    return None
+
+
 CODE_LANGS = {"python", "shell", "javascript", "typescript", "powershell", "batch", "ruby",
               "go", "rust", "java", "kotlin", "php", "perl", "lua", "r", "swift", "c", "cpp",
               "csharp", "applescript"}

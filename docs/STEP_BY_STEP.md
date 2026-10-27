@@ -16,8 +16,8 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 - [x] LLM client (`llm/client.py`): OpenAI-compatible, JSON-schema output, retries, majority vote over `n` samples, sqlite cache.
 - [x] Fixture skills with gold labels in `tests/fixtures/`.
 - [x] CLI: `schema`, `validate`, `llm-smoke`.
-- [ ] On the GPU box: start vLLM with Qwen3-8B and run `uv run skillalign llm-smoke`.
-- [ ] Commit the working state (the tree has uncommitted changes in `.gitignore`, `README.md`, `config.py`, `test_collect.py`, and `.env.example`).
+- [x] On the GPU box: start vLLM with Qwen3-8B and run `uv run skillalign llm-smoke`.
+- [x] Commit the working state (the tree has uncommitted changes in `.gitignore`, `README.md`, `config.py`, `test_collect.py`, and `.env.example`).
 
 **Done when:** `uv run pytest` passes without a GPU, and the smoke test passes on the GPU box.
 
@@ -30,11 +30,11 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 - [x] Run the GitHub crawl: `uv run skillalign collect github --max-repos 1500` (needs `GITHUB_TOKEN` in `.env`). Target 2–5k skills. (3,323 GitHub skills plus 97 official, 3,420 in `data/corpus/summary.json`.)
 - [x] Official repos are collected (98 skills, 97 after dedup).
 - [x] Normalizer: `uv run skillalign normalize <skill-dir>`.
-- [ ] Check the normalizer on 5 real skills. Read the output by hand.
+- [x] Check the normalizer on 5 real skills. Read the output by hand. (Done on 7 skills; see `docs/guideline.md` §5 for the two normalizer gaps found.)
 
 **Benchmark**
 
-- [ ] Write the first draft of `docs/guideline.md`: definitions, decision procedure, implied-behavior table, edge cases.
+- [x] Write the first draft of `docs/guideline.md`: definitions, decision procedure, implied-behavior table, edge cases.
 
 **Done when:** the crawl has finished or its target is set, and the guideline draft exists.
 

@@ -26,6 +26,7 @@ from skillalign.normalize.languages import (
     FENCE_LANG,
     detect_language,
     file_role,
+    sniff_untagged_fence,
 )
 from skillalign.normalize.markdown import HtmlComment, MarkdownDoc, parse_markdown
 
@@ -157,7 +158,10 @@ def load_skill(root: Path, *, skill_id: str | None = None, platform: str | None 
     for path, doc in markdown.items():
         # Virtual files for fenced code.
         for block in doc.code_blocks:
-            lang = FENCE_LANG.get(block.lang)
+            if block.fenced and not block.lang:
+                lang = sniff_untagged_fence(block.text)
+            else:
+                lang = FENCE_LANG.get(block.lang)
             if lang is None or block.line_end < block.line_start:
                 continue
             vpath = f"{path}#L{block.line_start}-L{block.line_end}.{_FENCE_EXT.get(lang, 'txt')}"
