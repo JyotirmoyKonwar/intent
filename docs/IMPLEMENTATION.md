@@ -91,13 +91,13 @@ Each milestone has a **must** part (needed for the paper) and a **stretch** part
 - [x] LLM client: OpenAI-compatible endpoint, JSON-schema constrained output, parse fallback (strips `<think>` and code fences), retries on validation failure, `n` samples with majority vote, sqlite cache, token and latency logging.
 - [x] Fixture skills with gold labels covering every type and the main edge cases.
 - [x] CLI: `schema`, `validate`, `llm-smoke`.
-- [ ] **On the GPU box:** start vLLM with Qwen3-8B and run `skillalign llm-smoke`.
+- [x] **On the GPU box:** start vLLM with Qwen3-8B and run `skillalign llm-smoke`.
 
 ### M1: Collection (days 2–3)
 - [x] Official repos (`skillalign collect official`): anthropics/skills, openai/skills, vercel-labs/agent-skills, huggingface/skills → 98 skills, 97 after dedup (2026-10-27).
 - [x] GitHub code-search collector (`skillalign collect github`), size-sharded past the 1,000-result cap, resumable, hits logged. **Needs `GITHUB_TOKEN`.**
 - [x] Snapshot store with per-skill manifests and licenses; filter; exact + MinHash dedup; corpus profile (`skillalign corpus`).
-- [ ] Run the GitHub crawl. Target: 2–5k skills.
+- [x] Run the GitHub crawl. Target: 2–5k skills. (1,988 canonical skills after dedup; see `data/corpus/summary.json`.)
 - **Must:** `anthropics/skills` and other official repos; a GitHub code-search sample of `SKILL.md` files (keep the whole skill directory). Filter, MinHash dedup, manifest per skill. Target: 2–5k skills.
 - **Stretch:** ClawHub / skills.sh (check ToS and robots.txt first); MalSkillBench / MaliciousSkillBench samples if the license allows.
 
@@ -105,7 +105,7 @@ Each milestone has a **must** part (needed for the paper) and a **stretch** part
 
 ### M2: Normalization and intents (days 2–3)
 - [x] Normalizer (`skillalign normalize <dir>`): roles, languages, frontmatter, doc chunks with line ranges, fenced code as virtual files mapped back to real lines, HTML comments.
-- [ ] **Decide for M3:** most fenced code in SKILL.md is an *example*, not an instruction to run (the official pdf skill has 12 Python examples). Treat a virtual file as reachable only when the surrounding text tells the agent to run it; otherwise mark it `dormant`, or UB precision will suffer.
+- [x] **Decided for M3 (`behaviors/detect.py`):** most fenced code in SKILL.md is an *example*, not an instruction to run (the official pdf skill has 12 Python examples). Treat a virtual file as reachable only when the surrounding text tells the agent to run it; otherwise mark it `dormant`, or UB precision will suffer.
 - **Must:** roles, languages, frontmatter, fenced code as virtual files; B1 per-chunk claim extraction with a verbatim quote check; B2 action vocabulary (~40 verbs → expected capabilities); category classifier.
 - **Stretch:** B3 embedding clusters + LLM merge (v1 can merge by exact action/object).
 

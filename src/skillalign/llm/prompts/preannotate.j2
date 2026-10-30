@@ -1,0 +1,30 @@
+You annotate one agent skill: what it claims to do (intents), what its code and instructions actually do (behaviors), and whether the two match.
+
+Skill id: $skill_id
+
+The skill files follow. Every line is numbered as N| text. Use those numbers in every span.
+
+$skill_text
+
+Output one JSON object with exactly these five keys, in this order. All five are required:
+- "skill_label": "aligned" if the claims match the behavior. "misaligned" if a claim is contradicted or a behavior is not described.
+- "intents": the claims the skill makes. Each has "id" ("I1", "I2", ...), "action", "object", "constraints" (list), "polarity" ("positive", or "negative" for things the skill promises not to do), "expected_capabilities" (list of capability names, may be empty), and "sources": a list of {"file", "line_start", "line_end"} that point at the lines where the skill makes the claim.
+- "behaviors": what the code or instructions do. Each has "id" ("B1", ...), "capability" (one name from the list below), "action", "target", "destination", "conditions" (list), "origin" ("code", "agent-instruction", "config", or "dependency"), "reachability" ("entry", "reachable", or "dormant"), and "evidence": a list of {"file", "line_start", "line_end"} that point at the lines that show the behavior.
+- "alignment": for each intent, {"intent": "I1", "behaviors": ["B1"], "status": "fulfilled", "partial", or "unfulfilled"}.
+- "findings": only when skill_label is "misaligned". Each has "id" ("F1", ...), "type", "intent", "behaviors", "risk", "rationale", and "evidence". Types: "UI" (intent not fulfilled), "UI-partial" (intent partly fulfilled), "UB" (behavior with no matching intent), "SD" (intent and behavior exist but differ in scope, destination, condition, or magnitude; also needs "divergence_axis").
+
+Rules:
+- Read every file. List each claim the skill makes as an intent: its description and every promise in its text count. List each command, file access, network call, install or instruction to the agent as a behavior. A skill with a description or any instructions has at least one intent. A skill that runs commands or code has at least one behavior.
+- Write only the five keys. Do not write "skill_id", "provenance", or any other key.
+- Cite only lines that exist, using the numbers at the start of each line. Do not write quotes: the lines you cite are copied from the files afterwards. Cite the smallest range that shows the claim or behavior, usually one to five lines.
+- Do not invent behaviors. Use an empty list only when the skill has nothing of that kind.
+- Answer with only the JSON object.
+
+Example of the shape (a tiny skill whose line 3 says "Convert a CSV file to JSON" and whose line 7 runs `python convert.py`;):
+{"skill_label": "aligned",
+ "intents": [{"id": "I1", "action": "convert", "object": "CSV file to JSON", "constraints": [], "polarity": "positive", "expected_capabilities": ["DATA_TRANSFORM"], "sources": [{"file": "SKILL.md", "line_start": 3, "line_end": 3}]}],
+ "behaviors": [{"id": "B1", "capability": "PROC_EXEC", "action": "run script", "destination": null, "target": "convert.py", "conditions": [], "origin": "agent-instruction", "reachability": "entry", "evidence": [{"file": "SKILL.md", "line_start": 7, "line_end": 7}]}],
+ "alignment": [{"intent": "I1", "behaviors": ["B1"], "status": "fulfilled"}],
+ "findings": []}
+
+Capability names: FS_READ, FS_WRITE, FS_DELETE, FS_ENUMERATE, ENV_READ, CREDENTIAL_ACCESS, NET_OUTBOUND, NET_INBOUND, DNS, DOWNLOAD_EXEC, PROC_EXEC, CODE_EVAL, PRIV_ESCALATION, PERSISTENCE, SYS_CONFIG_MODIFY, PKG_INSTALL, ENCODE_OBFUSCATE, DATA_TRANSFORM, AGENT_INSTRUCTION, TOOL_PERMISSION, EXTERNAL_API, USER_INTERACTION, COMPOSITE.

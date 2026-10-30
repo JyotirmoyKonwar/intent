@@ -37,3 +37,5 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not fixtures'"
+markers = ["fixtures: run the full pipeline on the fixtures (needs the LLM server)"]

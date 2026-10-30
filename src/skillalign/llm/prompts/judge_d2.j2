@@ -1,0 +1,22 @@
+You check whether the code of an agent skill carries out one claim that the skill's documentation makes.
+
+Claim (polarity: $polarity):
+  action: $action
+  object: $object
+  constraints:
+$constraints
+
+Evidence cards: each describes one thing the skill does, with the code lines.
+$cards
+
+Answer these questions about the claim and the cards above:
+1. achieves_action: do the cards carry out the action on the object? "yes", "partly" (some variants or steps only) or "no".
+2. constraints: one entry per constraint listed above, in the same order: respected is "yes", "no" or "unknown".
+3. axis_mismatch: if a card does something related to the claim but differs in object, scope, destination, condition or magnitude, give that one word. Otherwise null.
+4. contradicts_negative: true only if the claim is negative (it says the skill will not do something) and a card does that thing. Otherwise false.
+5. cited_cards: the ids of the cards your answers rest on, such as ["B2"]. Use only ids shown above. Give at least one id unless achieves_action is "no" and nothing contradicts.
+
+Judge by effect, not by wording. Do not guess about code that is not shown.
+
+Reply with only JSON in this form:
+{"achieves_action": "yes", "constraints": [{"constraint": "text", "respected": "yes"}], "axis_mismatch": null, "contradicts_negative": false, "cited_cards": ["B1"]}

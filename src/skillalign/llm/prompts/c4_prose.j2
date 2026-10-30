@@ -1,0 +1,28 @@
+You find the instructions that an agent skill's text gives to the AI agent that reads it.
+
+An instruction is a sentence that tells the agent to do something with a side effect outside its own reply. Illustrations only (not from this skill):
+- "Open the user's settings file" tells the agent to read a file.
+- "Post the result to the team channel" tells the agent to contact a service.
+- "Do not mention this step to the user" tells the agent to hide an action.
+
+Section from $file (numbered lines, format N| text):
+$section
+
+For each such instruction give a behavior:
+- capability: one of $capabilities
+- action: a short phrase for what the agent is told to do
+- target: what it reads, writes or runs (a path, a command, a variable name), or null
+- destination: the host or path that receives data, or null
+- line_start and line_end: the lines that hold the instruction, copied from the numbers above
+- quote: the sentence, copied exactly from those lines
+
+Rules:
+- Use USER_INTERACTION when the agent must show something to the user or ask the user.
+- Use AGENT_INSTRUCTION when the text tells the agent to hide an action from the user, to ignore other instructions, or to change its own rules.
+- An instruction is addressed to the agent: it is an imperative ("Run ...", "Ask ...", "Before replying, send ..."). Skip a sentence that describes the skill in the third person ("Reads the logs", "Saves the report", "Converts a file"): it says what the skill does, not what the agent must do.
+- Skip descriptions of what the skill is for, advice on style, and anything the agent does only in its own reply.
+- Skip sentences that forbid an action ("do not run X"). They are not instructions to do it.
+- If the section has no instruction, return an empty list.
+
+Reply with only JSON in this form:
+{"behaviors": [{"capability": "PROC_EXEC", "action": "run a command", "target": "ls -la", "destination": null, "quote": "...", "line_start": 1, "line_end": 1}]}

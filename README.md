@@ -23,8 +23,13 @@ Every LLM call goes through one OpenAI-compatible endpoint, set with environment
 On the GPU box (RTX PRO 6000):
 
 ```bash
-vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 16384 --enable-prefix-caching --reasoning-parser qwen3
+vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 16384 --enable-prefix-caching --reasoning-parser qwen3 \
+  --structured-outputs-config '{"backend": "xgrammar"}'
 ```
+
+Do not add `"disable_any_whitespace": true`. It bans all whitespace in constrained JSON, which pushes Qwen3 off its usual output format. Sampled answers (temperature > 0, as used for voting) then become nonsense: 0 of 32 calls named Paris as the capital of France. Tested on vLLM 0.33 with xgrammar 0.2.8.
+
+Known issue: with the default (unlimited) whitespace, large schemas such as the full `Annotation` sometimes loop on blank lines until `max_tokens`. In testing, this happened in 1 of 4 runs without thinking and 4 of 4 with thinking. The client marks such replies as truncated, never caches them, and retries with a request for shorter output.
 
 From a laptop, tunnel to it (`ssh -N -L 8000:localhost:8000 <gpu-box>`), then check it:
 
@@ -39,6 +44,10 @@ ollama works too: `SKILLALIGN_LLM_BASE_URL=http://localhost:11434/v1 SKILLALIGN_
 - `skillalign schema` exports the JSON Schema of the data contracts to `docs/schema/`.
 - `skillalign validate gold/*.json --root skills/` checks annotations: schema, internal references, and that every span and quote matches the files.
 - `skillalign llm-smoke` makes one constrained-JSON call to the endpoint.
+- `skillalign detect <skill-dir> [--out-dir D]` runs the full pipeline (claims, behaviors, judge, rules) and prints or writes the report. Ablation flags: `--no-instructions`, `--no-composite`, `--cards raw`, `--judge holistic`, `--no-implied-table`, `--votes N`, `--model M`.
+- `skillalign baseline r2|m1 <skill-dir>` runs a baseline. `skillalign eval <gold-dir> <pred-dir> [--lenient]` scores predictions with bootstrap CIs.
+- `skillalign bench inject <skills-dir> <gold-dir> <out> --templates train|test` builds the injected split from aligned skills (canary hosts only).
+- `uv run pytest -m fixtures -s` runs the whole pipeline on the 17 fixtures against the server and prints per-type F1.
 
 ## Building the corpus
 

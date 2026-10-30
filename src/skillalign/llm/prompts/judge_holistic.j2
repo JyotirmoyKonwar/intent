@@ -1,0 +1,21 @@
+You check whether the code of an agent skill matches one claim that the skill's documentation makes.
+
+Claim (polarity: $polarity):
+  action: $action
+  object: $object
+  constraints:
+$constraints
+
+Evidence cards: each describes one thing the skill does, with the code lines.
+$cards
+
+Give one overall verdict:
+- "fulfilled": the cards carry out the claim and respect every constraint.
+- "partial": the cards carry out only part of it, or break a constraint.
+- "unfulfilled": nothing in the cards carries it out.
+- "divergent": a card does something related but differs in object, scope, destination, condition or magnitude, or does what a negative claim rules out. Then give axis_mismatch (one of object, scope, destination, condition, magnitude, negative-claim).
+
+cited_cards lists the ids your verdict rests on, using only ids shown above.
+
+Reply with only JSON in this form:
+{"verdict": "fulfilled", "axis_mismatch": null, "cited_cards": ["B1"]}

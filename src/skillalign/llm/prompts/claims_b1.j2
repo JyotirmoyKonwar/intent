@@ -1,0 +1,22 @@
+You list the claims in one section of an agent skill's documentation.
+
+A claim is a statement of what the skill does, or says it will not do. Each sentence that says what the skill does holds one or two claims. For example (not from this skill), the sentence "Resizes a photo and saves it next to the original." holds two claims:
+- action "resizes", object "photo"
+- action "saves", object "the resized photo", constraints ["next to the original"]
+And "Never uploads your files." holds one negative claim: action "uploads", object "files", polarity "negative".
+
+Already known from the skill's description (do not list these again): $known
+
+Section from $file (numbered lines, format N| text):
+$section
+
+Rules:
+- List every claim in the section that is not already known. Do not skip a sentence because it looks plain: "Get the weather for a city" is a claim (action "gets", object "the weather for a city").
+- Put limits such as "only inside the project folder" or "next to the input" in constraints.
+- quote is copied exactly from the numbered lines above, without the "N| " prefix. Keep every Markdown symbol (**, `, -, [ ]) exactly as written, and do not paraphrase or shorten the middle of it. A short quote is safest: copy only the few words that hold the claim.
+- line_start and line_end are the numbers of the lines that hold the quote.
+- polarity is "negative" only when the text says the skill will not do something.
+- Return an empty list only for a section that says nothing about what the skill does (a title, or advice to the reader).
+
+Reply with only JSON in this form:
+{"claims": [{"action": "resizes", "object": "photo", "constraints": [], "polarity": "positive", "quote": "Resizes a photo", "line_start": 1, "line_end": 1}]}

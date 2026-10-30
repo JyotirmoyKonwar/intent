@@ -27,7 +27,7 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [x] Run the GitHub crawl: `uv run skillalign collect github --max-repos 1500` (needs `GITHUB_TOKEN` in `.env`). Target 2–5k skills. (3,323 GitHub skills plus 97 official, 3,420 in `data/corpus/summary.json`.)
+- [x] Run the GitHub crawl: `uv run skillalign collect github --max-repos 1500` (needs `GITHUB_TOKEN` in `.env`). Target 2–5k canonical skills. On disk: 8,455 GitHub and 98 official skill folders. After filter and dedup (`uv run skillalign corpus`): 1,988 canonical skills (1,891 GitHub, 97 official), kept as is, just under the 2k floor. Numbers are in `data/corpus/summary.json` and `data/corpus/dedup.json`.
 - [x] Official repos are collected (98 skills, 97 after dedup).
 - [x] Normalizer: `uv run skillalign normalize <skill-dir>`.
 - [x] Check the normalizer on 5 real skills. Read the output by hand. (Done on 7 skills; see `docs/guideline.md` §5 for the two normalizer gaps found.)
@@ -44,15 +44,15 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [ ] B1: per-chunk claim extraction from SKILL.md and README, with a verbatim quote check using `spans.py`.
-- [ ] B2: action vocabulary (about 40 verbs mapped to expected capabilities).
-- [ ] Category classifier (v1).
+- [x] B1: per-chunk claim extraction from SKILL.md and README, with a verbatim quote check using `spans.py`.
+- [x] B2: action vocabulary (about 40 verbs mapped to expected capabilities).
+- [x] Category classifier (v1).
 
 **Benchmark**
 
-- [ ] `bench/sample.py`: random sample plus an enriched sample.
-- [ ] `bench/preannotate.py`: Qwen3-32B reads a whole skill with line numbers and outputs an `Annotation`.
-- [ ] `bench/render.py`: Markdown view for review.
+- [x] `bench/sample.py`: random sample plus an enriched sample.
+- [x] `bench/preannotate.py`: Qwen3-32B reads a whole skill with line numbers and outputs an `Annotation`.
+- [x] `bench/render.py`: Markdown view for review.
 
 **Done when:** B1 runs on the fixtures and the three bench scripts run on 3 skills.
 
@@ -62,13 +62,13 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [ ] M3 detectors for Python (`ast`), shell, and config files (dependencies, postinstall, hooks, `.mcp.json`, `allowed-tools`).
-- [ ] Hidden-content scan.
-- [ ] Check the normalizer's dormant-code decision (IMPLEMENTATION.md §4, M2): a fenced block is reachable only when the text tells the agent to run it.
+- [x] M3 detectors for Python (`ast`), shell, and config files (dependencies, postinstall, hooks, `.mcp.json`, `allowed-tools`).
+- [x] Hidden-content scan.
+- [x] Check the normalizer's dormant-code decision (IMPLEMENTATION.md §4, M2): a fenced block is reachable only when the text tells the agent to run it.
 
 **Benchmark**
 
-- [ ] Pre-annotate the first batch on the GPU box with `bench/preannotate.py`. Cache every response.
+- [x] Pre-annotate the first batch on the GPU box with `bench/preannotate.py`. Cache every response.
 
 **Done when:** detectors pass their fixtures, and the first batch is pre-annotated.
 
@@ -78,9 +78,9 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [ ] Import and call graph, and reachability from entry points.
-- [ ] Def-use data flow inside functions, plus call-argument flow.
-- [ ] Composite patterns: exfiltration, download-and-execute, persistence, credential harvesting.
+- [x] Import and call graph, and reachability from entry points.
+- [x] Def-use data flow inside functions, plus call-argument flow.
+- [x] Composite patterns: exfiltration, download-and-execute, persistence, credential harvesting.
 
 **Benchmark**
 
@@ -95,8 +95,8 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [ ] C4 instruction behaviors (LLM) and cards.
-- [ ] M4 judge: D1 candidates, D2 checklist judge (n=5 votes, card IDs required), D3 implied table, D4 rules, risk, and JSON plus Markdown report.
+- [x] C4 instruction behaviors (LLM) and cards.
+- [x] M4 judge (code and fake-LLM tests; not yet run on the server): D1 candidates, D2 checklist judge (n=5 votes, card IDs required), D3 implied table, D4 rules, risk, and JSON plus Markdown report.
 
 **Benchmark**
 
@@ -110,13 +110,13 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [ ] **M4 end to end on the fixtures.** `skillalign detect` runs on all fixtures.
+- [ ] **M4 end to end on the fixtures.** `skillalign detect` exists and passes on scripted-judge tests; still to run on the server for all 17 fixtures.
 - [ ] Throughput check: time the whole pipeline on 50 skills. This sets the corpus plan.
-- [ ] Add the ablation flags from the start: `--no-instructions`, `--no-composite`, `--cards raw`, `--judge holistic`, `--no-implied-table`, `--votes`, `--model`.
+- [x] Add the ablation flags from the start: `--no-instructions`, `--no-composite`, `--cards raw`, `--judge holistic`, `--no-implied-table`, `--votes`, `--model`.
 
 **Benchmark**
 
-- [ ] `bench/inject.py`: the six operators from PLAN.md §5.3 plus `VAGUE_DOC`. Separate templates for train and test. Canary hosts only (`canary.local`).
+- [x] `bench/inject.py`: the six operators from PLAN.md §5.3 plus `VAGUE_DOC`. Separate templates for train and test. Canary hosts only (`canary.local`).
 
 **Done when:** `pytest -m fixtures` prints per-type F1, and the throughput number is written down.
 
@@ -126,9 +126,9 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 
 **Engineering**
 
-- [ ] M6 baseline R2 (rules).
-- [ ] M6 baseline M1 (similarity). Tune the threshold on dev only.
-- [ ] `eval/match.py`: strict and lenient matching (PLAN.md §8.1).
+- [x] M6 baseline R2 (rules).
+- [x] M6 baseline M1 (similarity). Tune the threshold on dev only.
+- [x] `eval/match.py`: strict and lenient matching (PLAN.md §8.1).
 
 **Benchmark**
 
@@ -143,7 +143,7 @@ Goal: contracts, LLM client, and fixtures work with no GPU.
 **Engineering**
 
 - [ ] M6 baseline L1 (zero-shot Qwen3-8B) and L1-32B.
-- [ ] First dev-set results: per-type metrics, bootstrap CIs, McNemar tests.
+- [ ] First dev-set results: per-type metrics, bootstrap CIs, McNemar tests. (Harness `eval/` is built and tested on the gold labels; no dev results yet.)
 
 **Benchmark**
 

@@ -1,0 +1,15 @@
+You decide whether a behavior of an agent skill is expected from its description.
+
+Description of the skill (the only thing a user reads before installing it):
+$description
+
+Behavior found in the skill:
+$card
+
+Question: would a user who read only the description expect the skill to do this?
+- Answer true only for ordinary work that the description plainly needs (for example, reading the
+  input file of a converter).
+- Answer false for anything that sends data to another host, reads secrets or credentials, changes
+  system settings, persists after the task, or is hidden from the user.
+
+Reply with only JSON: {"expected": true} or {"expected": false}
